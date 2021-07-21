@@ -215,13 +215,13 @@ class Overlord(discord.Client):
             embed.add_field(name=R.EMBED.TITLE.CALL_ARGS, value=f'```python\n{call_arg_report}\n```')
         return embed
 
-    def new_warn_report(self, name: str, details: str, color: int = 0xd75242):
+    def new_warn_report(self, name: str, details: str, color: int = 0x3877B3):
         header = R.EMBED.HEADER.WARN_REPORT
         title = f'⚠ {name}'
         embed = self.new_embed(title=title, body=details, header=header, color=color)
         return embed
 
-    def new_info_report(self, name: str, details: str, color: int = 0xd75242):
+    def new_info_report(self, name: str, details: str, color: int = 0x3877B3):
         header = R.EMBED.HEADER.INFO_REPORT
         title = f'📰 {name}'
         embed = self.new_embed(title=title, body=details, header=header, color=color)

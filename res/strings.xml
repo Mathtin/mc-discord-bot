@@ -111,7 +111,11 @@
       <string type="error-other" lang="en" name="invalid-ign">Invalid IGN</string>
       <string type="error-other" lang="en" name="duplicate-ign">IGN already in use</string>
       <string type="error-other" lang="en" name="duplicate-persistent-profile">Already added</string>
+      <string type="error-other" lang="en" name="profile-non-persistent">Profile is added by player</string>
       <string type="error-other" lang="en" name="duplicate-profile">Profile already exists</string>
+      <string type="error-other" lang="en" name="unknown-player">No such player</string>
+      <string type="error-other" lang="en" name="already-banned">Already banned</string>
+      <string type="error-other" lang="en" name="not-banned">Not banned yet</string>
    </messages>
    
 </resources>

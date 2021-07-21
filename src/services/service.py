@@ -29,7 +29,7 @@ SOFTWARE.
 __author__ = "Mathtin"
 
 import logging
-from typing import Any, Type, Dict, Optional
+from typing import Any, Type, Dict, Optional, List
 
 import db as DB
 from db.models.base import BaseModel
@@ -75,6 +75,21 @@ class DBService(object):
         async with self.session() as session:
             obj = (await session.execute(stmt)).scalar_one_or_none()
             await session.detach(obj)
+            return obj
+
+    def get_list_sync(self, stmt: Any) -> List[Any]:
+        with self.sync_session() as session:
+            obj = [r for r, in session.execute(stmt)]
+            for r in obj:
+                session.detach(r)
+            return obj
+
+    async def get_list(self, stmt: Any) -> List[Any]:
+        async with self.session() as session:
+            obj = []
+            async for r, in await session.stream(stmt):
+                await session.detach(r)
+                obj.append(r)
             return obj
 
     def create_sync(self, model_type: Type[BaseModel], value: Dict[str, Any]) -> BaseModel:

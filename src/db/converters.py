@@ -33,6 +33,7 @@ from typing import Any, Dict, List
 
 import discord as d
 
+from util.mcuuid import PlayerData
 from .models import User
 
 
@@ -93,18 +94,20 @@ def member_row(user: d.Member, role_map: Dict[int, Dict[str, Any]]) -> Dict[str,
 # Player profiles
 #
 
-def player_profile_row(user: User, ign: str, msg: d.Message) -> Dict[str, Any]:
+def player_profile_row(user: User, player: PlayerData, msg: d.Message) -> Dict[str, Any]:
     return {
         'user_id': user.id,
-        'ign': ign,
+        'ign': player.username,
+        'uuid': str(player.uuid),
         'profile': msg.content,
         'message_did': msg.id
     }
 
 
-def persistent_player_profile_row(user: User, ign: str) -> Dict[str, Any]:
+def persistent_player_profile_row(user: User, player: PlayerData) -> Dict[str, Any]:
     return {
         'user_id': user.id,
-        'ign': ign,
+        'ign': player.username,
+        'uuid': str(player.uuid),
         'persistent': True
     }

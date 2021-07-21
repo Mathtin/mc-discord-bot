@@ -29,15 +29,17 @@ SOFTWARE.
 __author__ = "Mathtin"
 
 import logging
+from typing import Optional, Union, List
 
 import discord
+from sqlalchemy import select
+
 import db as DB
 import db.converters as conv
 import db.queries as q
-
-from typing import Optional, Union, Tuple
-from .user import UserService
+from util.mcuuid import PlayerData
 from .service import DBService
+from .user import UserService
 
 log = logging.getLogger('user-service')
 
@@ -56,15 +58,19 @@ class PlayerProfileService(DBService):
         super().__init__(db)
         self.users = users
 
-    def get_sync(self, d_user: Union[discord.User, discord.Member, DB.User]) -> Optional[DB.PlayerProfile]:
+    def get_sync_all(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
+        if d_user is None:
+            return self.get_list_sync(select(DB.PlayerProfile))
         if isinstance(d_user, DB.User):
-            return self.get_optional_sync(q.select_player_profile_by_did(d_user.did))
-        return self.get_optional_sync(q.select_player_profile_by_did(d_user.id))
+            return self.get_list_sync(q.select_player_profile_by_did(d_user.did))
+        return self.get_list_sync(q.select_player_profile_by_did(d_user.id))
 
-    async def get(self, d_user: Union[discord.User, discord.Member, DB.User]) -> Optional[DB.PlayerProfile]:
+    async def get_all(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
+        if d_user is None:
+            return await self.get_list(select(DB.PlayerProfile))
         if isinstance(d_user, DB.User):
-            return await self.get_optional(q.select_player_profile_by_did(d_user.did))
-        return await self.get_optional(q.select_player_profile_by_did(d_user.id))
+            return await self.get_list(q.select_player_profile_by_did(d_user.did))
+        return await self.get_list(q.select_player_profile_by_did(d_user.id))
 
     def get_by_ign_sync(self, ign: str) -> Optional[DB.PlayerProfile]:
         return self.get_optional_sync(q.select_player_profile_by_ign(ign))
@@ -72,23 +78,23 @@ class PlayerProfileService(DBService):
     async def get_by_ign(self, ign: str) -> Optional[DB.PlayerProfile]:
         return await self.get_optional(q.select_player_profile_by_ign(ign))
 
-    def get_by_message_did(self, did: int) -> Optional[DB.PlayerProfile]:
+    def get_by_message_did_sync(self, did: int) -> Optional[DB.PlayerProfile]:
         return self.get_optional_sync(q.select_player_profile_by_message_did(did))
 
     async def get_by_message_did(self, did: int) -> Optional[DB.PlayerProfile]:
         return await self.get_optional(q.select_player_profile_by_message_did(did))
 
-    def add_profile_sync(self, user: DB.User, ign: str, msg: discord.Message) -> DB.PlayerProfile:
-        return self.create_sync(DB.PlayerProfile, conv.player_profile_row(user, ign, msg))
+    def add_profile_sync(self, user: DB.User, player: PlayerData, msg: discord.Message) -> DB.PlayerProfile:
+        return self.create_sync(DB.PlayerProfile, conv.player_profile_row(user, player, msg))
 
-    async def add_profile(self, user: DB.User, ign: str, msg: discord.Message) -> DB.PlayerProfile:
-        return await self.create(DB.PlayerProfile, conv.player_profile_row(user, ign, msg))
+    async def add_profile(self, user: DB.User, player: PlayerData, msg: discord.Message) -> DB.PlayerProfile:
+        return await self.create(DB.PlayerProfile, conv.player_profile_row(user, player, msg))
 
-    def add_persistent_profile_sync(self, user: DB.User, ign: str) -> DB.PlayerProfile:
-        return self.create_sync(DB.PlayerProfile, conv.persistent_player_profile_row(user, ign))
+    def add_persistent_profile_sync(self, user: DB.User, player: PlayerData) -> DB.PlayerProfile:
+        return self.create_sync(DB.PlayerProfile, conv.persistent_player_profile_row(user, player))
 
-    async def add_persistent_profile(self, user: DB.User, ign: str) -> DB.PlayerProfile:
-        return await self.create(DB.PlayerProfile, conv.persistent_player_profile_row(user, ign))
+    async def add_persistent_profile(self, user: DB.User, player: PlayerData) -> DB.PlayerProfile:
+        return await self.create(DB.PlayerProfile, conv.persistent_player_profile_row(user, player))
 
     def remove_sync(self, profile: DB.PlayerProfile) -> None:
         self.delete_sync(DB.PlayerProfile, profile.id)

@@ -505,8 +505,24 @@ class XStrings(object):
                 return self.get("duplicate-persistent-profile")
         
             @property
+            def PROFILE_NON_PERSISTENT(self) -> str:
+                return self.get("profile-non-persistent")
+        
+            @property
             def DUPLICATE_PROFILE(self) -> str:
                 return self.get("duplicate-profile")
+        
+            @property
+            def UNKNOWN_PLAYER(self) -> str:
+                return self.get("unknown-player")
+        
+            @property
+            def ALREADY_BANNED(self) -> str:
+                return self.get("already-banned")
+        
+            @property
+            def NOT_BANNED(self) -> str:
+                return self.get("not-banned")
         
     
         _section_name = "messages"

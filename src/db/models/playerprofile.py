@@ -28,7 +28,7 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
-from sqlalchemy import ForeignKey, Column, Integer, Unicode, BOOLEAN, BigInteger
+from sqlalchemy import ForeignKey, Column, Integer, Unicode, BOOLEAN, BigInteger, VARCHAR
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -37,6 +37,7 @@ class PlayerProfile(BaseModel):
     __tablename__ = 'player_profiles'
 
     ign = Column(Unicode(127), nullable=False, unique=True)
+    uuid = Column(VARCHAR(63), nullable=False, unique=True)
     persistent = Column(BOOLEAN, nullable=False, default=False)
     banned = Column(BOOLEAN, nullable=False, default=False)
     profile = Column(Unicode(1000), nullable=True)

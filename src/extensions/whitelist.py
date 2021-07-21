@@ -28,19 +28,22 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
+import io
+import json
 import logging
 from typing import List, Dict
 
 import discord
 
+from db import PlayerProfile
 from overlord import OverlordMember
 from overlord.extension import BotExtension
 from services import UserService, RoleService, PlayerProfileService
 from util import ConfigView
 from util.resources import STRINGS as R
 from util.exceptions import InvalidConfigException
-from util.extbot import is_text_channel, quote_msg, filter_roles
-from util.mcuuid import GetPlayerData
+from util.extbot import is_text_channel, quote_msg, filter_roles, qualified_name
+from util.mcuuid import PlayerData
 
 log = logging.getLogger('ranking-extension')
 
@@ -168,7 +171,25 @@ class WhitelistExtension(BotExtension):
     # Async Methods #
     #################
 
-    #
+    async def _send_profile(self, channel: discord.TextChannel, profile: PlayerProfile):
+        user = profile.user
+        d_user = await self.bot.fetch_user(user.did)
+
+        desc = f'User: {d_user.mention}\n' \
+               f'IGN: \'{profile.ign}\'\n' \
+               f'Persistent: {profile.banned}\n' \
+               f'Banned: {profile.banned}'
+        embed = self.bot.new_embed(f"📊 {qualified_name(d_user)} profile", desc, header=self.__extname__,
+                                   color=self.__color__)
+
+        if profile.profile is not None:
+            embed.add_field(name=f'Profile content', value=profile.profile, inline=False)
+
+        await channel.send(embed=embed)
+
+    async def get_whitelist_json(self) -> str:
+        profiles = await self.s_profiles.get_all()
+        return json.dumps([{"uuid": p.uuid, "name": p.ign} for p in profiles], indent=4)
 
     #########
     # Hooks #
@@ -246,7 +267,7 @@ class WhitelistExtension(BotExtension):
             return
 
         ign = parsed['ign']
-        player_data = GetPlayerData(ign)
+        player_data = PlayerData(ign)
 
         # Handle invalid ign
         if not player_data.valid:
@@ -292,7 +313,7 @@ class WhitelistExtension(BotExtension):
                     await self.s_profiles.save(existing)
                     self.sync_whitelist()
                 return
-            await self.s_profiles.add_profile(user, ign, msg)
+            await self.s_profiles.add_profile(user, player_data, msg)
             self.sync_whitelist()
 
     async def on_message_edit(self, raw: discord.RawMessageUpdateEvent) -> None:
@@ -325,7 +346,7 @@ class WhitelistExtension(BotExtension):
             return
 
         ign = parsed['ign']
-        player_data = GetPlayerData(ign)
+        player_data = PlayerData(ign)
 
         # Handle invalid ign
         if not player_data.valid:
@@ -437,7 +458,7 @@ class WhitelistExtension(BotExtension):
 
     @BotExtension.command("wl_add", description="Add persistent whitelist entry")
     async def cmd_wl_add(self, msg: discord.Message, user: OverlordMember, ign: str):
-        player_data = GetPlayerData(ign)
+        player_data = PlayerData(ign)
 
         # Handle invalid ign
         if not player_data.valid:
@@ -460,13 +481,93 @@ class WhitelistExtension(BotExtension):
                     await msg.channel.send(f'{R.EMBED.TITLE.INFO}: {R.MESSAGE.ERROR_OTHER.DUPLICATE_PROFILE}.\n'
                                            f'{R.MESSAGE.STATUS.SUCCESS}')
                 return
-            await self.s_profiles.add_persistent_profile(user.db, ign)
+            await self.s_profiles.add_persistent_profile(user.db, player_data)
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
 
-    @BotExtension.command("wl_remove", description="NOT IMPLEMENTED")
-    async def cmd_wl_remove(self, msg: discord.Message):
+    @BotExtension.command("wl_remove", description="Remove persistent whitelist entry")
+    async def cmd_wl_remove(self, msg: discord.Message, ign):
+        async with self.sync():
+            profile = await self.s_profiles.get_by_ign(ign)
+            if profile is None:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.UNKNOWN_PLAYER)
+                return
+            if not profile.persistent:
+                await msg.channel.send(f'{R.EMBED.TITLE.ERROR}: {R.MESSAGE.ERROR_OTHER.PROFILE_NON_PERSISTENT} '
+                                       f'({R.MESSAGE.STATE.SKIPPED})')
+                return
+            if profile.message_did is not None:
+                await msg.channel.send(f'{R.EMBED.TITLE.WARNING}: {R.MESSAGE.ERROR_OTHER.PROFILE_NON_PERSISTENT} '
+                                       f'({R.MESSAGE.STATE.SKIPPED})')
+                profile.persistent = False
+                await self.s_profiles.save(profile)
+                return
+            await self.s_profiles.remove(profile)
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
 
-    @BotExtension.command("get_profile", description="NOT IMPLEMENTED")
-    async def cmd_get_profile(self, msg: discord.Message):
+    @BotExtension.command("wl_force_remove", description="Remove persistent whitelist entry including profile")
+    async def cmd_wl_force_remove(self, msg: discord.Message, ign):
+        async with self.sync():
+            profile = await self.s_profiles.get_by_ign(ign)
+            if profile is None:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.UNKNOWN_PLAYER)
+                return
+            if profile.message_did is not None:
+                await msg.channel.send(f'{R.EMBED.TITLE.WARNING}: {R.MESSAGE.ERROR_OTHER.PROFILE_NON_PERSISTENT}')
+                msg = await self.channel.fetch_message(profile.message_did)
+                await msg.delete()
+            await self.s_profiles.remove(profile)
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("get_profile", description="Get player profile")
+    async def cmd_get_profile(self, msg: discord.Message, user_or_ign: str):
+        profiles = []
+
+        # Handle if user queried
+        member = await self.bot.resolve_user(user_or_ign)
+        if member is not None:
+            profiles = await self.s_profiles.get_all(member)
+        profile_ids = [p.id for p in profiles]
+        profile = await self.s_profiles.get_by_ign(user_or_ign)
+        if profile is not None and profile.id not in profile_ids:
+            profiles.append(profile)
+
+        if not len(profiles):
+            await msg.channel.send(R.MESSAGE.ERROR_OTHER.UNKNOWN_PLAYER)
+            return
+
+        for profile in profiles:
+            await self._send_profile(msg.channel, profile)
+
+    @BotExtension.command("wl_ban", description="Ban player (preserving profile)")
+    async def cmd_wl_ban(self, msg: discord.Message, ign: str):
+        async with self.sync():
+            profile = await self.s_profiles.get_by_ign(ign)
+            if profile is None:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.UNKNOWN_PLAYER)
+                return
+            if profile.banned:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.ALREADY_BANNED)
+                return
+            profile.banned = True
+            await self.s_profiles.save(profile)
+        await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("wl_unban", description="Unban player")
+    async def cmd_wl_unban(self, msg: discord.Message, ign: str):
+        async with self.sync():
+            profile = await self.s_profiles.get_by_ign(ign)
+            if profile is None:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.UNKNOWN_PLAYER)
+                return
+            if not profile.banned:
+                await msg.channel.send(R.MESSAGE.ERROR_OTHER.NOT_BANNED)
+                return
+            profile.banned = False
+            await self.s_profiles.save(profile)
+        await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("wl_get", description="Sends whitelist json")
+    async def cmd_wl_get(self, msg: discord.Message):
+        async with self.sync():
+            f = io.StringIO(await self.get_whitelist_json())
+            await msg.channel.send(content="Whitelist", file=discord.File(fp=f, filename="whitelist.json"))

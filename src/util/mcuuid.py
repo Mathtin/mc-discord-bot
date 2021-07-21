@@ -67,7 +67,7 @@ def is_valid_mojang_uuid(uuid):
     return True
 
 
-class GetPlayerData:
+class PlayerData:
     def __init__(self, identifier, timestamp=None):
         self.valid = True
         """
