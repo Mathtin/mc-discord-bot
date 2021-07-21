@@ -177,7 +177,8 @@ class WhitelistExtension(BotExtension):
 
         desc = f'User: {d_user.mention}\n' \
                f'IGN: \'{profile.ign}\'\n' \
-               f'Persistent: {profile.banned}\n' \
+               f'UUID: `{profile.uuid}`\n' \
+               f'Persistent: {profile.persistent}\n' \
                f'Banned: {profile.banned}'
         embed = self.bot.new_embed(f"📊 {qualified_name(d_user)} profile", desc, header=self.__extname__,
                                    color=self.__color__)
@@ -408,6 +409,37 @@ class WhitelistExtension(BotExtension):
                 return
             await self.s_profiles.remove(profile)
             self.sync_whitelist()
+
+    async def on_member_update(self, before: OverlordMember, after: OverlordMember) -> None:
+        if self.ignore_member(before.discord) or not self.ignore_member(after.discord):
+            return
+        # Handle situation when member lost required role
+        async with self.sync():
+            profiles = await self.s_profiles.get_all(after.db)
+            for profile in profiles:
+                if profile.message_did is None:
+                    continue
+                msg = await self.channel.fetch_message(profile.message_did)
+                limited_msg = msg.content[:30].replace('\n', ' ') + '...' if len(msg.content) > 10 else msg.content
+                '''
+                await msg.delete()
+                '''
+                log.info(f'Removing \'{limited_msg}\' from {after.discord.display_name} (lost required role)')
+
+    async def on_member_remove(self, member: OverlordMember) -> None:
+        if self.ignore_member(member.discord):
+            return
+        async with self.sync():
+            profiles = await self.s_profiles.get_all(member.db)
+            for profile in profiles:
+                if profile.message_did is None:
+                    continue
+                msg = await self.channel.fetch_message(profile.message_did)
+                limited_msg = msg.content[:30].replace('\n', ' ') + '...' if len(msg.content) > 10 else msg.content
+                log.info(f'Removing \'{limited_msg}\' from {member.discord.display_name} (user left server)')
+                '''
+                await msg.delete()
+                '''
 
     ############
     # Commands #

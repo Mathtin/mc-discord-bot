@@ -85,7 +85,7 @@ class UtilityExtension(BotExtension):
         if ext is not None:
             i = self.bot.extension_idx(ext)
             e_count = len(self.bot.extensions)
-            await msg.edit(embed=ext.help_embed(f"Overlord Help page [{i + 1}/{e_count}]"))
+            await msg.edit(embed=ext.help_embed(f"MC Bot Help page [{i + 1}/{e_count}]"))
 
     #########
     # Hooks #
@@ -99,7 +99,7 @@ class UtilityExtension(BotExtension):
         emoji = emoji.name
         embed = message.embeds[0]
 
-        if 'Overlord Help page' in embed.author.name:
+        if 'MC Bot Help page' in embed.author.name:
             await self.switch_help_page(emoji, message)
 
     async def on_control_reaction_remove(self, _, message: discord.Message,
@@ -110,7 +110,7 @@ class UtilityExtension(BotExtension):
         emoji = emoji.name
         embed = message.embeds[0]
 
-        if 'Overlord Help page' in embed.author.name:
+        if 'MC Bot Help page' in embed.author.name:
             await self.switch_help_page(emoji, message)
 
     ############
@@ -125,7 +125,7 @@ class UtilityExtension(BotExtension):
             return
         i = self.bot.extension_idx(ext)
         e_count = len(self.bot.extensions)
-        help_msg = await msg.channel.send(embed=ext.help_embed(f"Overlord Help page [{i + 1}/{e_count}]"))
+        help_msg = await msg.channel.send(embed=ext.help_embed(f"MC Bot Help page [{i + 1}/{e_count}]"))
         await help_msg.add_reaction(u'⏮')
         await help_msg.add_reaction(u'◀')
         await help_msg.add_reaction(u'▶')
