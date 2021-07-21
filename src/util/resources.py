@@ -338,6 +338,14 @@ class XStrings(object):
             def SKIPPED(self) -> str:
                 return self.get("skipped")
         
+            @property
+            def ENABLED(self) -> str:
+                return self.get("enabled")
+        
+            @property
+            def DISABLED(self) -> str:
+                return self.get("disabled")
+        
     
         class XError(object):
             _type_name = "error"
@@ -483,6 +491,22 @@ class XStrings(object):
             @property
             def DUPLICATE_RANK(self) -> str:
                 return self.get("duplicate-rank")
+        
+            @property
+            def INVALID_IGN(self) -> str:
+                return self.get("invalid-ign")
+        
+            @property
+            def DUPLICATE_IGN(self) -> str:
+                return self.get("duplicate-ign")
+        
+            @property
+            def DUPLICATE_PERSISTENT_PROFILE(self) -> str:
+                return self.get("duplicate-persistent-profile")
+        
+            @property
+            def DUPLICATE_PROFILE(self) -> str:
+                return self.get("duplicate-profile")
         
     
         _section_name = "messages"

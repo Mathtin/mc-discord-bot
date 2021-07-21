@@ -100,3 +100,11 @@ def player_profile_row(user: User, ign: str, msg: d.Message) -> Dict[str, Any]:
         'profile': msg.content,
         'message_did': msg.id
     }
+
+
+def persistent_player_profile_row(user: User, ign: str) -> Dict[str, Any]:
+    return {
+        'user_id': user.id,
+        'ign': ign,
+        'persistent': True
+    }

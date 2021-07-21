@@ -40,7 +40,7 @@ class Rank(BaseModel):
 
     role_id = Column(Integer, ForeignKey('roles.id', ondelete='CASCADE'), nullable=False, index=True)
 
-    role = relationship("Role", lazy="select")
+    role = relationship("Role", lazy="joined")
 
     def __repr__(self):
         s = super().__repr__()[:-2]

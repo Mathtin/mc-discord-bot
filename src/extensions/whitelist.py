@@ -33,6 +33,7 @@ from typing import List, Dict
 
 import discord
 
+from overlord import OverlordMember
 from overlord.extension import BotExtension
 from services import UserService, RoleService, PlayerProfileService
 from util import ConfigView
@@ -43,6 +44,7 @@ from util.mcuuid import GetPlayerData
 
 log = logging.getLogger('ranking-extension')
 
+
 def parse_colon_separated(msg: str) -> Dict[str, str]:
     lines = [s.strip() for s in msg.split('\n')]
     lines = [s for s in lines if s != ""]
@@ -50,13 +52,14 @@ def parse_colon_separated(msg: str) -> Dict[str, str]:
     for s in lines:
         try:
             k = s[: s.index(':')].strip()
-            v = s[s.index(':')+1:].strip()
+            v = s[s.index(':') + 1:].strip()
             if k == "":
                 return {}
             res[k.lower()] = v
         except ValueError:
             continue
     return res
+
 
 #####################
 # Message Templates #
@@ -68,7 +71,8 @@ Country: USA
 Playstyle & mods you like: building with oak planks
 Random info: I'm not even exisiting! I'm just example! Don't blame me please"""
 
-INVALID_PROFILE_DM_MSG = """Hi {0}, you left your profile on ECc server but unfortunately it doesn\'t match specified pattern :(
+INVALID_PROFILE_DM_MSG = \
+    """Hi {0}, you left your profile on ECc server but unfortunately it doesn\'t match specified pattern :(
 
 Please, follow this example:
 """ + quote_msg(PROFILE_EXAMPLE) + """
@@ -77,20 +81,23 @@ The profile has been removed but don't worry. Here is copy of your message:
 {1}
 """
 
-INVALID_PROFILE_IGN_DM_MSG = """Hi {0}, you left your profile on ECc server but unfortunately you specified invalid IGN :(
+INVALID_PROFILE_IGN_DM_MSG = \
+    """Hi {0}, you left your profile on ECc server but unfortunately you specified invalid IGN :(
 Please, check your IGN.
 
 The profile has been removed but don't worry. Here is copy of your message:
 {1}
 """
 
-FOREIGN_PROFILE_DM_MSG = """Hi {0}, you left your profile on ECc server but unfortunately you mentioned someone else's ign :(
+FOREIGN_PROFILE_DM_MSG = \
+    """Hi {0}, you left your profile on ECc server but unfortunately you mentioned someone else's ign :(
 
 If you believe it isn't your mistake (someone took your ign), please contact admins.
 
 The profile has been removed but don't worry. Here is copy of your message:
 {1}
 """
+
 
 ####################
 # Whitelist Config #
@@ -121,7 +128,8 @@ class WhitelistExtension(BotExtension):
     config: WhitelistConfig = WhitelistConfig()
     channel: discord.TextChannel
 
-    _dry_sync = False
+    _dry_sync: bool
+    _dry_run: bool
 
     #########
     # Props #
@@ -151,7 +159,7 @@ class WhitelistExtension(BotExtension):
         return len(filter_roles(member, self.required_roles)) == 0
 
     def sync_whitelist(self) -> None:
-        if self._dry_sync:
+        if self._dry_sync or self._dry_run:
             return
         log.info("Synchronizing whitelist")
         pass
@@ -165,6 +173,10 @@ class WhitelistExtension(BotExtension):
     #########
     # Hooks #
     #########
+
+    async def on_ready(self) -> None:
+        self._dry_sync = False
+        self._dry_run = True
 
     async def on_config_update(self) -> None:
         self.config = self.bot.get_config_section(WhitelistConfig)
@@ -188,7 +200,6 @@ class WhitelistExtension(BotExtension):
         for i, role_name in enumerate(self.required_roles):
             if self.s_roles.get_d_role(role_name) is None:
                 raise InvalidConfigException(f"No such role: '{role_name}'", self.config.path(f"required[{i}]"))
-        self.sync_whitelist()
 
     async def on_message(self, msg: discord.Message) -> None:
         if msg.channel != self.channel:
@@ -381,8 +392,22 @@ class WhitelistExtension(BotExtension):
     # Commands #
     ############
 
-    @BotExtension.command("sync_wl", description="Reloads profiles from channel")
-    async def cmd_sync_wl(self, msg: discord.Message):
+    @BotExtension.command("wl_enable", description="Enable whitelist synchronization")
+    async def cmd_wl_enable(self, msg: discord.Message):
+        self._dry_run = False
+        await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("wl_disable", description="Disable whitelist synchronization")
+    async def cmd_wl_disable(self, msg: discord.Message):
+        self._dry_run = True
+        await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("wl_status", description="Check if whitelist synchronization is enabled")
+    async def cmd_wl_status(self, msg: discord.Message):
+        await msg.channel.send(R.MESSAGE.STATE.DISABLED if self._dry_run else R.MESSAGE.STATE.ENABLED)
+
+    @BotExtension.command("reload_wl", description="Reloads profiles from channel")
+    async def cmd_reload_wl(self, msg: discord.Message):
         progress = self.new_progress(f'{R.MESSAGE.STATUS.SYNC_WHITELIST}')
         progress.add_step(R.MESSAGE.STATUS.REMOVING_DYNAMIC_PROFILES)
         progress.add_step(R.MESSAGE.STATUS.LOADING_DYNAMIC_PROFILES)
@@ -405,8 +430,37 @@ class WhitelistExtension(BotExtension):
         self.sync_whitelist()
         await progress.finish()
 
-    @BotExtension.command("wl_add", description="NOT IMPLEMENTED")
-    async def cmd_wl_add(self, msg: discord.Message):
+    @BotExtension.command("sync_wl", description="Synchronize whitelist between servers")
+    async def cmd_sync_wl(self, msg: discord.Message):
+        self.sync_whitelist()
+        await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
+
+    @BotExtension.command("wl_add", description="Add persistent whitelist entry")
+    async def cmd_wl_add(self, msg: discord.Message, user: OverlordMember, ign: str):
+        player_data = GetPlayerData(ign)
+
+        # Handle invalid ign
+        if not player_data.valid:
+            await msg.channel.send(R.MESSAGE.ERROR_OTHER.INVALID_IGN)
+            return
+
+        async with self.sync():
+            # Handle existing
+            existing = await self.s_profiles.get_by_ign(ign)
+            if existing is not None:
+                if existing.user.id != user.db.id:
+                    await msg.channel.send(R.MESSAGE.ERROR_OTHER.DUPLICATE_IGN)
+                    return
+                else:
+                    if existing.persistent:
+                        await msg.channel.send(R.MESSAGE.ERROR_OTHER.DUPLICATE_PERSISTENT_PROFILE)
+                        return
+                    existing.persistent = True
+                    await self.s_profiles.save(existing)
+                    await msg.channel.send(f'{R.EMBED.TITLE.INFO}: {R.MESSAGE.ERROR_OTHER.DUPLICATE_PROFILE}.\n'
+                                           f'{R.MESSAGE.STATUS.SUCCESS}')
+                return
+            await self.s_profiles.add_persistent_profile(user.db, ign)
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
 
     @BotExtension.command("wl_remove", description="NOT IMPLEMENTED")

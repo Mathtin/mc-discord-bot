@@ -44,7 +44,7 @@ class PlayerProfile(BaseModel):
 
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
 
-    user = relationship("User", lazy="select")
+    user = relationship("User", lazy="joined")
 
     def __repr__(self):
         s = super().__repr__()[:-2]

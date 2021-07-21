@@ -72,6 +72,8 @@
       <string type="state" lang="en" name="not-started">Not started</string>
       <string type="state" lang="en" name="unknown">Unknown state</string>
       <string type="state" lang="en" name="skipped">Skipped</string>
+      <string type="state" lang="en" name="enabled">Enabled</string>
+      <string type="state" lang="en" name="disabled">Disabled</string>
 
       <!-- basic error messages -->
       <string type="error" lang="en" name="internal">Internal error</string>
@@ -102,10 +104,14 @@
       <string type="config-error" lang="en" name="invalid-path">Invalid config path</string>
       <string type="config-error" lang="en" name="parse-fail">Failed to parse config value</string>
       
-      <!-- rank error messages -->
+      <!-- other error messages -->
       <string type="error-other" lang="en" name="invalid-rank">Invalid rank</string>
       <string type="error-other" lang="en" name="unknown-rank">No such rank</string>
       <string type="error-other" lang="en" name="duplicate-rank">Rank already exists</string>
+      <string type="error-other" lang="en" name="invalid-ign">Invalid IGN</string>
+      <string type="error-other" lang="en" name="duplicate-ign">IGN already in use</string>
+      <string type="error-other" lang="en" name="duplicate-persistent-profile">Already added</string>
+      <string type="error-other" lang="en" name="duplicate-profile">Profile already exists</string>
    </messages>
    
 </resources>
