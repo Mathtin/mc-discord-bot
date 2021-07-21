@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -107,6 +106,20 @@ class DBService(object):
         async with self.session() as session:
             async with session.begin():
                 obj = await session.merge(model_type=model_type, value=value, pk_col=pk_col)
+            await session.detach(obj)
+        return obj
+
+    def save_sync(self, model: BaseModel) -> BaseModel:
+        with self.sync_session() as session:
+            with session.begin():
+                obj = session.merge(model=model)
+            session.detach(obj)
+        return obj
+
+    async def save(self, model: BaseModel) -> BaseModel:
+        async with self.session() as session:
+            async with session.begin():
+                obj = await session.merge(model=model)
             await session.detach(obj)
         return obj
 

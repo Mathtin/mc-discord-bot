@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -131,7 +130,7 @@ class DBSyncSession(object):
                 model = model_type(**value)
                 self._session.add(model)
         else:
-            self._session.merge(model)
+            return self._session.merge(model)
         return model
 
     def delete(self, *, model: Optional[BaseModel] = None,
@@ -409,7 +408,7 @@ class DBAsyncSession(object):
                 model = model_type(**value)
                 self._session.add(model)
         else:
-            await self._session.merge(model)
+            return await self._session.merge(model)
         return model
 
     async def delete(self, *, model: BaseModel = None,

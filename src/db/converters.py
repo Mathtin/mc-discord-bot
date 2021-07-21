@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +33,7 @@ from typing import Any, Dict, List
 
 import discord as d
 
-from .models import User, MessageEvent
+from .models import User
 
 
 #
@@ -90,100 +89,14 @@ def member_row(user: d.Member, role_map: Dict[int, Dict[str, Any]]) -> Dict[str,
     }
 
 
-def member_join_row(user: User, joined: datetime, events: Dict[str, int]) -> Dict[str, Any]:
+#
+# Player profiles
+#
+
+def player_profile_row(user: User, ign: str, msg: d.Message) -> Dict[str, Any]:
     return {
-        'type_id': events["member_join"],
         'user_id': user.id,
-        'created_at': joined
-    }
-
-
-def user_leave_row(user: User, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["member_leave"],
-        'user_id': user.id
-    }
-
-
-#
-# Messages
-#
-
-def new_message_to_row(user_id: int, msg: d.Message, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["new_message"],
-        'user_id': user_id,
-        'message_id': msg.id,
-        'channel_id': msg.channel.id,
-        'created_at': msg.created_at
-    }
-
-
-def message_edit_row(msg: MessageEvent, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["message_edit"],
-        'user_id': msg.user.id,
-        'message_id': msg.message_id,
-        'channel_id': msg.channel_id
-    }
-
-
-def message_delete_row(msg: MessageEvent, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["message_delete"],
-        'user_id': msg.user.id,
-        'message_id': msg.message_id,
-        'channel_id': msg.channel_id
-    }
-
-
-#
-# VC
-#
-
-def vc_join_row(user: User, channel: d.VoiceChannel, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["vc_join"],
-        'user_id': user.id,
-        'channel_id': channel.id
-    }
-
-
-def vc_leave_row(user: User, channel: d.VoiceChannel, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["vc_leave"],
-        'user_id': user.id,
-        'channel_id': channel.id
-    }
-
-
-#
-# Reaction
-#
-
-def new_reaction_to_row(user: User, msg: MessageEvent, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["new_reaction"],
-        'user_id': user.id,
-        'message_event_id': msg.id
-    }
-
-
-def reaction_delete_row(user: User, msg: MessageEvent, events: Dict[str, int]) -> Dict[str, Any]:
-    return {
-        'type_id': events["reaction_delete"],
-        'user_id': user.id,
-        'message_event_id': msg.id
-    }
-
-
-#
-# User Stat
-#
-
-def empty_user_stat_row(user_id: int, type_id: int) -> Dict[str, Any]:
-    return {
-        'type_id': type_id,
-        'user_id': user_id,
-        'value': 0
+        'ign': ign,
+        'profile': msg.content,
+        'message_did': msg.id
     }

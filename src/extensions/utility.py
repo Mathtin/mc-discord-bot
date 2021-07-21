@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +33,8 @@ import re
 
 import discord
 
-import db as DB
 from overlord.extension import BotExtension
-from services import UserService, EventService, StatService, RoleService
+from services import UserService, RoleService
 from util.resources import STRINGS as R
 
 log = logging.getLogger('utility-extension')
@@ -65,14 +63,6 @@ class UtilityExtension(BotExtension):
     @property
     def s_users(self) -> UserService:
         return self.bot.services.user
-
-    @property
-    def s_events(self) -> EventService:
-        return self.bot.services.event
-
-    @property
-    def s_stats(self) -> StatService:
-        return self.bot.services.stat
 
     ###########
     # Methods #
@@ -148,7 +138,7 @@ class UtilityExtension(BotExtension):
         else:
             await msg.channel.send(R.MESSAGE.STATUS.PING)
 
-    @BotExtension.command("sync", description="Synchronize db data with guild data in terms of users and roles")
+    @BotExtension.command("sync_roles", description="Synchronize db data with guild data in terms of users and roles")
     async def cmd_sync_roles(self, msg: discord.Message):
         progress = self.new_progress(f'{R.MESSAGE.STATUS.SYNC_USERS} {R.NAME.COMMON.PROGRESS.lower()}')
         progress.add_step(R.MESSAGE.STATUS.SYNC_USERS)
@@ -161,47 +151,9 @@ class UtilityExtension(BotExtension):
         await progress.finish()
 
     @BotExtension.command("switch_lang", description="Switch bot language")
-    async def switch_lang(self, msg: discord.Message, lang: str):
+    async def cmd_switch_lang(self, msg: discord.Message, lang: str):
         R.switch_lang(lang)
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
-
-    @BotExtension.command("clear_all", description="Clears db data")
-    async def clear_data(self, msg: discord.Message):
-        log.warning("Clearing database")
-        progress = self.new_progress(f'{R.MESSAGE.STATUS.DB_DROP}')
-        progress.add_step(f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.UserStat.table_name()}')
-        progress.add_step([f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.MemberEvent.table_name()}',
-                           f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.MessageEvent.table_name()}',
-                           f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.ReactionEvent.table_name()}',
-                           f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.VoiceChatEvent.table_name()}'])
-        progress.add_step(f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.User.table_name()}')
-        progress.add_step(f'{R.MESSAGE.STATUS.DB_DROP_TABLE}: {DB.Role.table_name()}')
-        progress.add_step(R.MESSAGE.STATUS.SYNC_USERS)
-        await progress.start(msg.channel)
-        await self.bot.send_warning(self.__extname__, "Clearing database")
-        try:
-            async with self.bot.sync():
-                log.warning(f"Clearing table `{DB.UserStat.table_name()}`")
-                await self.s_stats.clear_all()
-                await progress.next_step()
-                log.warning(f"Clearing tables `{DB.MemberEvent.table_name()}`, "
-                            f"`{DB.MessageEvent.table_name()}`, "
-                            f"`{DB.ReactionEvent.table_name()}`, "
-                            f"`{DB.VoiceChatEvent.table_name()}`")
-                await self.s_events.clear_all()
-                await progress.next_step()
-                log.warning(f"Clearing table `{DB.User.table_name()}`")
-                await self.s_users.clear_all()
-                await progress.next_step()
-                log.warning(f"Clearing table `{DB.Role.table_name()}`")
-                await self.s_roles.clear_all()
-                await progress.next_step()
-                await self.bot.sync_users(no_lock=True)
-                log.info(f'Done')
-        except Exception:
-            await progress.finish(failed=True)
-            raise
-        await progress.finish()
 
     @BotExtension.command("status", description="Prints bot state summary")
     async def extension_status(self, msg: discord.Message):
@@ -215,50 +167,4 @@ class UtilityExtension(BotExtension):
         ext_details = [f'✅ {ext.name}' if ext.enabled else f'❌ {ext.name}' for ext in self.bot.extensions]
         embed.add_field(name=R.EMBED.TITLE.EXTENSION_STATUS_LIST, value='\n'.join(ext_details), inline=False)
         await msg.channel.send(embed=embed)
-
-    @BotExtension.command("dump_channel", description="Fetches whole channel data into db (overwriting)")
-    async def cmd_dump_channel(self, msg: discord.Message, channel: discord.TextChannel):
-        permissions = channel.permissions_for(self.bot.me)
-        if not permissions.read_message_history:
-            await msg.channel.send(f'{channel.mention} {R.MESSAGE.ERROR.NO_ACCESS}: can\'t read message history')
-            return
-
-        progress = self.new_progress(f'{R.MESSAGE.STATUS.DB_LOAD_CHANNEL}')
-        progress.add_step(R.MESSAGE.STATUS.DB_CLEAR_CHANNEL)
-        progress.add_step(f'{R.MESSAGE.STATUS.DB_LOAD_CHANNEL} {channel.mention}')
-        await progress.start(msg.channel)
-        try:
-            # Transaction begins
-            async with self.bot.sync():
-
-                # Drop full channel message history
-                log.warning(f'Dropping #{channel.name}({channel.id}) history')
-                await self.s_events.clear_text_channel_history(channel)
-
-                # Load all messages
-                log.warning(f'Loading #{channel.name}({channel.id}) history')
-                await progress.next_step()
-                async for message in channel.history(limit=None, oldest_first=True):
-
-                    # Skip bot messages
-                    if message.author.bot:
-                        continue
-
-                    # Resolve user
-                    user = await self.s_users.get(message.author)
-                    if user is None and self.bot.config.keep_absent_users:
-                        user = await self.s_users.add_user(message.author)
-
-                    # Skip users not in db
-                    if user is None:
-                        continue
-
-                    # Insert new message event
-                    await self.s_events.create_new_message_event(user, message)
-
-                log.info(f'Done')
-        except Exception:
-            await progress.finish(failed=True)
-            raise
-        await progress.finish()
 

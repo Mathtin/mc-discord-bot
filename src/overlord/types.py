@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -66,29 +65,6 @@ class OverlordMember(OverlordUser):
     discord: DIS.Member
 
 
-class OverlordMessage(OverlordGenericObject):
-    db: DB.MessageEvent
-    discord: DIS.Message
-
-
-class OverlordMessageEdit(OverlordMessage):
-    discord: DIS.RawMessageUpdateEvent
-
-
-class OverlordMessageDelete(OverlordMessage):
-    discord: DIS.RawMessageDeleteEvent
-
-
-class OverlordVCState(OverlordGenericObject):
-    db: DB.VoiceChatEvent
-    discord: DIS.VoiceState
-
-
-class OverlordReaction(OverlordGenericObject):
-    db: DB.ReactionEvent
-    discord: DIS.PartialEmoji
-
-
 ###########
 # Configs #
 ###########
@@ -110,8 +86,8 @@ class OverlordRootConfig(ConfigView):
     """
     bot {
         control : OverlordControlConfig
+        egg_done = ...
         keep_absent_users = ...
-        ignore_afk_vc = ...
         command {
             help = ["help", ...]
             ...
@@ -119,9 +95,8 @@ class OverlordRootConfig(ConfigView):
     }
     """
     control: OverlordControlConfig = OverlordControlConfig()
-    keep_absent_users: bool = True
-    ignore_afk_vc: bool = True
     egg_done: str = "change this part"
+    keep_absent_users: bool = True
     command: Dict[str, List[str]] = {}
 
 

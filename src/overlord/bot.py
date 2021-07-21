@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,8 +46,7 @@ from util.extbot import qualified_name, is_dm_message, filter_roles, is_text_cha
 from util.extbot import skip_bots, after_initialized, guild_member_event, get_coroutine_attrs
 from util.logger import DiscordLogConfig
 from util.resources import STRINGS as R
-from .types import OverlordMessageDelete, OverlordMember, OverlordMessage, OverlordMessageEdit, OverlordReaction, \
-    OverlordRole, OverlordVCState, IBotExtension, OverlordRootConfig
+from .types import OverlordMember, OverlordRole, IBotExtension, OverlordRootConfig
 
 log = logging.getLogger('overlord-bot')
 
@@ -90,7 +88,6 @@ class Overlord(discord.Client):
         intents.guilds = True
         intents.members = True
         intents.messages = True
-        intents.voice_states = True
         intents.reactions = True
         super().__init__(intents=intents)
 
@@ -166,9 +163,6 @@ class Overlord(discord.Client):
 
     def is_guild_member_message(self, msg: discord.Message) -> bool:
         return not is_dm_message(msg) and msg.guild.id == self.guild.id
-
-    def check_afk_state(self, state: discord.VoiceState) -> bool:
-        return not state.afk or not self.config.ignore_afk_vc
 
     def is_special_channel_id(self, channel_id: int) -> bool:
         return channel_id == self.control_channel.id or channel_id == self.log_channel.id
@@ -364,7 +358,6 @@ class Overlord(discord.Client):
                 continue
             # Update and repair
             user = await self.services.user.merge_member(member)
-            await self.services.event.repair_member_joined_event(member, user)
         # Remove effectively absent
         if not self.config.keep_absent_users:
             await self.services.user.remove_absent()
@@ -535,18 +528,13 @@ class Overlord(discord.Client):
             return
         if not self.is_guild_member_message(message):
             return
-        async with self.sync():
-            user = await self.services.user.get(message.author)
-            # Skip non-existing users
-            if user is None:
-                log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new message event!')
-                return
-            # Save event
-            msg = await self.services.event.get_new_message_event_by_did(message.id)
-            if msg is None:
-                msg = await self.services.event.create_new_message_event(user, message)
+        user = await self.services.user.get(message.author)
+        # Skip non-existing users
+        if user is None:
+            log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new message event!')
+            return
         # Call extension 'on_message' handlers
-        await self._run_call_plan('on_message', OverlordMessage(message, msg))
+        await self._run_call_plan('on_message', message)
 
     async def _on_control_message(self, message: discord.Message) -> None:
         """
@@ -579,15 +567,8 @@ class Overlord(discord.Client):
         """
         if self.is_special_channel_id(payload.channel_id):
             return
-        async with self.sync():
-            # ignore absent
-            msg = await self.services.event.get_new_message_event_by_did(payload.message_id)
-            if msg is None:
-                return
-            # Save event
-            msg_edit = await self.services.event.create_message_edit_event(msg)
         # Call extension 'on_message_edit' handlers
-        await self._run_call_plan('on_message_edit', OverlordMessageEdit(payload, msg_edit))
+        await self._run_call_plan('on_message_edit', payload)
 
     @after_initialized
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
@@ -598,17 +579,8 @@ class Overlord(discord.Client):
         """
         if self.is_special_channel_id(payload.channel_id):
             return
-        async with self.sync():
-            msg_delete = await self.services.event.get_message_delete_event_by_did(payload.message_id)
-            if msg_delete is not None:
-                return
-            msg = await self.services.event.get_new_message_event_by_did(payload.message_id)
-            if msg is None:
-                return
-            # Save event
-            msg_delete = await self.services.event.create_message_delete_event(msg)
         # Call extension 'on_message_delete' handlers
-        await self._run_call_plan('on_message_delete', OverlordMessageDelete(payload, msg_delete))
+        await self._run_call_plan('on_message_delete', payload)
 
     @after_initialized
     @skip_bots
@@ -622,8 +594,6 @@ class Overlord(discord.Client):
         async with self.sync():
             # Add/update user
             user = await self.services.user.merge_member(member)
-            # Save event
-            await self.services.event.create_member_join_event(user, member)
         # Call extension 'on_member_join' handlers
         await self._run_call_plan('on_member_join', OverlordMember(member, user))
 
@@ -668,7 +638,6 @@ class Overlord(discord.Client):
                 if user is None:
                     log.warning(f'{qualified_name(member)} does not exist in db! Skipping user leave event!')
                     return
-                await self.services.event.create_user_leave_event(user)
             else:
                 user = await self.services.user.remove(member)
                 if user is None:
@@ -676,67 +645,6 @@ class Overlord(discord.Client):
                     return
         # Call extension 'on_member_remove' handlers
         await self._run_call_plan('on_member_remove', OverlordMember(member, user))
-
-    @after_initialized
-    @skip_bots
-    @guild_member_event
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState,
-                                    after: discord.VoiceState) -> None:
-        """
-            Async vc state change event handler
-
-            Saves event in database
-        """
-        if before.channel == after.channel:
-            return
-        if before.channel is not None and self.check_afk_state(before):
-            await self.on_vc_leave(member, before)
-        if after.channel is not None and self.check_afk_state(after):
-            await self.on_vc_join(member, after)
-
-    @after_initialized
-    async def on_vc_join(self, member: discord.Member, state: discord.VoiceState) -> None:
-        """
-            Async vc join event handler
-
-            Saves event in database
-        """
-        async with self.sync():
-            user = await self.services.user.get(member)
-            # Skip non-existing users
-            if user is None:
-                log.warning(f'{qualified_name(member)} does not exist in db! Skipping vc join event!')
-                return
-            # Apply constraints
-            await self.services.event.repair_vc_leave_event(user, state.channel)
-            # Save event
-            event = await self.services.event.create_vc_join_event(user, state.channel)
-        # Call extension 'on_vc_join' handlers
-        await self._run_call_plan('on_vc_join', OverlordMember(member, user), OverlordVCState(state, event))
-
-    @after_initialized
-    async def on_vc_leave(self, member: discord.Member, state: discord.VoiceState) -> None:
-        """
-            Async vc join event handler
-
-            Saves event in database
-        """
-        async with self.sync():
-            user = await self.services.user.get(member)
-            # Skip non-existing users
-            if user is None:
-                log.warning(f'{qualified_name(member)} does not exist in db! Skipping vc leave event!')
-                return
-            # Close event
-            events = await self.services.event.close_vc_join_event(user, state.channel)
-            if events is None:
-                return
-            join_event, leave_event = events
-        # Call extension 'on_vc_leave' handlers
-        await self._run_call_plan('on_vc_leave',
-                                  OverlordMember(member, user),
-                                  OverlordVCState(state, join_event),
-                                  OverlordVCState(state, leave_event))
 
     @after_initialized
     async def on_guild_role_create(self, role: discord.Role) -> None:
@@ -794,22 +702,15 @@ class Overlord(discord.Client):
             return await self.on_control_reaction_add(member, message, payload.emoji)
         if not self.is_guild_member_message(message):
             return
-        async with self.sync():
-            msg = await self.services.event.get_new_message_event_by_did(message.id)
-            # ignore absent
-            if msg is None:
-                return
-            user = await self.services.user.get(member)
-            if user is None:
-                log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new reaction event!')
-                return
-            # Save event
-            event = await self.services.event.create_new_reaction_event(user, msg)
+        user = await self.services.user.get(member)
+        if user is None:
+            log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new reaction event!')
+            return
         # Call extension 'on_reaction_add' handlers
         await self._run_call_plan('on_reaction_add',
                                   OverlordMember(member, user),
-                                  OverlordMessage(message, msg),
-                                  OverlordReaction(payload.emoji, event))
+                                  message,
+                                  payload.emoji)
 
     async def on_control_reaction_add(self, member: discord.Member, message: discord.Message,
                                       emoji: discord.PartialEmoji) -> None:
@@ -844,20 +745,15 @@ class Overlord(discord.Client):
             return
         if not self.is_guild_member_message(message):
             return
-        async with self.sync():
-            msg = await self.services.event.get_new_message_event_by_did(message.id)
-            # ignore absent
-            if msg is None:
-                return
-            user = await self.services.user.get(member)
-            if user is None:
-                log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new reaction event!')
-                return
-            # Save event
-            event = await self.services.event.create_reaction_delete_event(user, msg)
+        user = await self.services.user.get(member)
+        if user is None:
+            log.warning(f'{qualified_name(message.author)} does not exist in db! Skipping new reaction event!')
+            return
         # Call extension 'on_reaction_remove' handlers
-        await self._run_call_plan('on_reaction_remove', OverlordMember(member, user), OverlordMessage(message, msg),
-                                  OverlordReaction(payload.emoji, event))
+        await self._run_call_plan('on_reaction_remove',
+                                  OverlordMember(member, user),
+                                  message,
+                                  payload.emoji)
 
     async def on_control_reaction_remove(self, member: discord.Member, message: discord.Message,
                                          emoji: discord.PartialEmoji) -> None:

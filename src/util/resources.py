@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -96,64 +95,12 @@ class XStrings(object):
                 return self.get("progress")
         
     
-        class XUserStat(object):
-            _type_name = "user-stat"
-        
-            def __init__(self, section) -> None:
-                self._section = section
-        
-            def get(self, string_name) -> str:
-                return self._section.get(self._type_name, string_name)
-        
-            @property
-            def MEMBERSHIP(self) -> str:
-                return self.get("membership")
-        
-            @property
-            def NEW_MESSAGE_COUNT(self) -> str:
-                return self.get("new-message-count")
-        
-            @property
-            def DELETE_MESSAGE_COUNT(self) -> str:
-                return self.get("delete-message-count")
-        
-            @property
-            def EDIT_MESSAGE_COUNT(self) -> str:
-                return self.get("edit-message-count")
-        
-            @property
-            def NEW_REACTION_COUNT(self) -> str:
-                return self.get("new-reaction-count")
-        
-            @property
-            def DELETE_REACTION_COUNT(self) -> str:
-                return self.get("delete-reaction-count")
-        
-            @property
-            def VC_TIME(self) -> str:
-                return self.get("vc-time")
-        
-            @property
-            def MIN_WEIGHT(self) -> str:
-                return self.get("min-weight")
-        
-            @property
-            def MAX_WEIGHT(self) -> str:
-                return self.get("max-weight")
-        
-            @property
-            def EXACT_WEIGHT(self) -> str:
-                return self.get("exact-weight")
-        
-    
         _section_name = "names"
         COMMON: XCommon
-        USER_STAT: XUserStat
     
         def __init__(self, res) -> None:
             self._res = res
             self.COMMON = XStrings.XName.XCommon(self)
-            self.USER_STAT = XStrings.XName.XUserStat(self)
     
         def get(self, type_name, string_name) -> str:
             return self._res.get(self._section_name, type_name, string_name)
@@ -302,6 +249,18 @@ class XStrings(object):
                 return self.get("ping")
         
             @property
+            def REMOVING_DYNAMIC_PROFILES(self) -> str:
+                return self.get("removing-dynamic-profiles")
+        
+            @property
+            def LOADING_DYNAMIC_PROFILES(self) -> str:
+                return self.get("loading-dynamic-profiles")
+        
+            @property
+            def SYNC_WHITELIST(self) -> str:
+                return self.get("sync-whitelist")
+        
+            @property
             def SYNC_USERS(self) -> str:
                 return self.get("sync-users")
         
@@ -314,28 +273,12 @@ class XStrings(object):
                 return self.get("updating-rank")
         
             @property
-            def DB_CLEAR_CHANNEL(self) -> str:
-                return self.get("db-clear-channel")
-        
-            @property
-            def DB_LOAD_CHANNEL(self) -> str:
-                return self.get("db-load-channel")
-        
-            @property
             def DB_DROP_TABLE(self) -> str:
                 return self.get("db-drop-table")
         
             @property
             def DB_DROP(self) -> str:
                 return self.get("db-drop")
-        
-            @property
-            def CLEAR_STATS(self) -> str:
-                return self.get("clear-stats")
-        
-            @property
-            def CALC_STATS(self) -> str:
-                return self.get("calc-stats")
         
             @property
             def STOP_EXTENSION(self) -> str:
@@ -540,18 +483,6 @@ class XStrings(object):
             @property
             def DUPLICATE_RANK(self) -> str:
                 return self.get("duplicate-rank")
-        
-            @property
-            def DUPLICATE_WEIGHT(self) -> str:
-                return self.get("duplicate-weight")
-        
-            @property
-            def UNKNOWN_STAT(self) -> str:
-                return self.get("unknown-stat")
-        
-            @property
-            def NEGATIVE_STAT_VALUE(self) -> str:
-                return self.get("negative-stat-value")
         
     
         _section_name = "messages"

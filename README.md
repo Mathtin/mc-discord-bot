@@ -1,28 +1,24 @@
-# Overlord
+# MC Discord Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Discord Manager Bot
+Minecraft Discord Bot
 
 ## Features
 
-Bot frontend functionality represented by extensions:
+Control whitelist via specified channel
 
-  - Utility
-  - Config
-  - Ranking
-  - Invite
-  - Stats
+Add people to whitelist manually
 
-Each extension provides a set of commands and background tasks useful for managing your discord guild as well as discord bot itself. Every extension has own help page containing brief description and command usage provided by this extension.
+Rank people (integration with various mods and plugins)
 
 ### Usage
 
 Clone repository
 
 ```sh
-git clone https://github.com/Mathtin/overlord.git
-cd overlord
+git clone https://github.com/Mathtin/mc-discord-bot.git
+cd mc-discord-bot
 ```
 
 Install the dependencies via pip
@@ -41,8 +37,8 @@ nano .env
 Create configuration file  
 
 ```sh
-cp overlord_example.cfg overlord.cfg
-nano overlord.cfg
+cp mc-bot_example.cfg mc-bot.cfg
+nano mc-bot.cfg
 ```
 
 Start app
@@ -56,48 +52,46 @@ python3 src/main.py
 Pull latest image from hub
 
 ```sh
-docker pull mathtin/overlord:latest
+docker pull mathtin/mc-discord-bot:latest
 ```
 
 Create env and configuration files
 
 ```sh
-wget -O overlord.env https://raw.githubusercontent.com/Mathtin/overlord/master/.env.template
-nano overlord.env
-wget -O overlord.cfg https://raw.githubusercontent.com/Mathtin/overlord/master/overlord_example.cfg
-nano overlord.cfg
+wget -O mc-bot.env https://raw.githubusercontent.com/Mathtin/mc-discord-bot/master/.env.template
+nano mc-bot.env
+wget -O mc-bot.cfg https://raw.githubusercontent.com/Mathtin/mc-discord-bot/master/mc-bot_example.cfg
+nano mc-bot.cfg
 ```
 
 Run container (attach to network where your db is reachable)
 
 ```sh
-docker run -d --name overlord-bot \ 
-           -e $(pwd)/overlord.env \
-           -v $(pwd)/overlord.cfg:/app/overlord.cfg \
+docker run -d --name mc-bot \ 
+           -e $(pwd)/mc-bot.env \
+           -v $(pwd)/mc-bot.cfg:/app/mc-bot.cfg \
            --network=multi-host-network \
-           mathtin/overlord:latest
+           mathtin/mc-discord-bot:latest
 ```
 
-Or you can use docker compose (postgres+overlord) using files from repository
+Or you can use docker compose (postgres+mc-discord-bot) using files from repository
 
 ```sh
-wget https://raw.githubusercontent.com/Mathtin/overlord/master/docker-compose.yml
-mkdir scripts && wget -P scripts https://raw.githubusercontent.com/Mathtin/overlord/master/scripts/01_users.sql
-wget https://raw.githubusercontent.com/Mathtin/overlord/master/database.env
+wget https://raw.githubusercontent.com/Mathtin/mc-discord-bot/master/docker-compose.yml
+mkdir scripts && wget -P scripts https://raw.githubusercontent.com/Mathtin/mc-discord-bot/master/scripts/01_users.sql
+wget https://raw.githubusercontent.com/Mathtin/mc-discord-bot/master/database.env
 ```
 
 Set password in database.env
 
-Note: `DATABASE_ACCESS_URL=postgresql+asyncpg://root:PASTE_PASSWORD_HERE@postgres_container/overlord`
+Note: `DATABASE_ACCESS_URL=postgresql+asyncpg://root:PASTE_PASSWORD_HERE@postgres_container/mc_discord_bot`
 
 ### Development
 
 Issues and pull requests are highly welcomed!
 
+Based on [Overlord project](https://github.com/Mathtin/overlord).
+
 # Author
 
-Copyright (c) 2020 Daniel [Mathtin](https://github.com/Mathtin/) Shiko
-
-### Contributors
-
- - Danila [DeadBlasoul](https://github.com/DeadBlasoul/) Popov
+Copyright (c) 2021 Daniel [Mathtin](https://github.com/Mathtin/) Shiko

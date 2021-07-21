@@ -28,17 +28,25 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
-
-class InvalidConfigException(Exception):
-    def __init__(self, msg: str, var_name: str):
-        super().__init__(f'{msg}, check {var_name} value')
-
-
-class NotCoroutineException(TypeError):
-    def __init__(self, func):
-        super().__init__(f'{str(func)} is not a coroutine function')
+from sqlalchemy import ForeignKey, Column, Integer, Unicode, BOOLEAN, BigInteger
+from sqlalchemy.orm import relationship
+from .base import BaseModel
 
 
-class MissingResourceException(Exception):
-    def __init__(self, xml: str, path: str):
-        super().__init__(f'Missing resource in {xml}: {path}')
+class PlayerProfile(BaseModel):
+    __tablename__ = 'player_profiles'
+
+    ign = Column(Unicode(127), nullable=False, unique=True)
+    persistent = Column(BOOLEAN, nullable=False, default=False)
+    banned = Column(BOOLEAN, nullable=False, default=False)
+    profile = Column(Unicode(1000), nullable=True)
+    message_did = Column(BigInteger, nullable=True)
+
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+
+    user = relationship("User", lazy="select")
+
+    def __repr__(self):
+        s = super().__repr__()[:-2]
+        f = "user_id={0.user_id!r},ign={0.ign!r},persistent={0.persistent!r},banned={0.banned!r}".format(self)
+        return s + f + ")>"

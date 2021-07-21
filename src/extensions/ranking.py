@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,15 +29,13 @@ SOFTWARE.
 __author__ = "Mathtin"
 
 import logging
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple
 
 import discord
 
 import db as DB
-from overlord.types import OverlordMember, OverlordMessageDelete, OverlordMessageEdit, OverlordMessage
 from services import UserService
 from services.role import RoleService
-from services.stat import StatService
 from util import ConfigView, FORMATTERS
 from util.exceptions import InvalidConfigException
 from util.extbot import filter_roles, is_role_applied, qualified_name, is_text_channel
@@ -52,36 +49,14 @@ log = logging.getLogger('ranking-extension')
 # Ranking Config #
 ##################
 
-class RankConfig(ConfigView):
-    """
-    ... {
-        weight = ...
-        membership = ...
-        messages = ...
-        vc = ...
-    }
-    """
-    weight: int = 0
-    membership: int = 1
-    messages: int = 1
-    vc: int = 1
 
-
-class RankingRootConfig(ConfigView):
+class RankingConfig(ConfigView):
     """
     rank {
-        ignored = [...]
         required = [...]
-        log_channel = ...
-        role {
-            ... : RankConfig
-        }
     }
     """
-    ignored: List[str] = []
     required: List[str] = []
-    log_channel: int = 0
-    role: Dict[str, RankConfig] = {}
 
 
 #####################
@@ -90,10 +65,10 @@ class RankingRootConfig(ConfigView):
 
 class RankingExtension(BotExtension):
     __extname__ = '🎖 Ranking Extension'
-    __description__ = 'Member ranking system based on stats (check Stats Extension)'
+    __description__ = 'Player ranking system'
     __color__ = 0xc84e3f
 
-    config: RankingRootConfig = RankingRootConfig()
+    config: RankingConfig = RankingConfig()
     log_channel: discord.TextChannel
 
     #########
@@ -105,61 +80,26 @@ class RankingExtension(BotExtension):
         return self.bot.services.user
 
     @property
-    def s_stats(self) -> StatService:
-        return self.bot.services.stat
-
-    @property
     def s_roles(self) -> RoleService:
         return self.bot.services.role
 
     @property
-    def ranks(self) -> Dict[str, RankConfig]:
-        return self.config.role
+    def ranks(self) -> List[str]:
+        return []
 
     @property
     def required_roles(self) -> List[str]:
         return self.config.required
-
-    @property
-    def ignored_roles(self) -> List[str]:
-        return self.config.ignored
 
     ###########
     # Methods #
     ###########
 
     async def find_user_rank_name(self, user: DB.User) -> Optional[str]:
-
-        # Gather stat values
-        exact_weight = await self.s_stats.get(user, "exact_weight")
-        min_weight = await self.s_stats.get(user, "min_weight")
-        max_weight = await self.s_stats.get(user, "max_weight")
-        membership = await self.s_stats.get(user, "membership")
-        messages = (await self.s_stats.get(user, "new_message_count")) - \
-                   (await self.s_stats.get(user, "delete_message_count"))
-        vc_time = await self.s_stats.get(user, "vc_time")
-        ranks = self.ranks.items()
-
-        # Search exact
-        if exact_weight > 0:
-            exact_ranks = [(n, r) for n, r in ranks if r.weight == exact_weight]
-            return exact_ranks[0] if exact_ranks else None
-
-        # Filter minimal
-        if min_weight > 0:
-            ranks = [(n, r) for n, r in ranks if r.weight >= min_weight]
-
-        # Filter maximal
-        if max_weight > 0:
-            ranks = [(n, r) for n, r in ranks if r.weight <= max_weight]
-
-        # Filter meeting criteria
-        ranks = [(n, r) for n, r in ranks if (messages >= r.messages or vc_time >= r.vc) and membership >= r.membership]
-
-        return max(ranks, key=lambda nr: nr[1].weight)[0] if ranks else None
+        return None
 
     def ignore_member(self, member: discord.Member) -> bool:
-        return len(filter_roles(member, self.ignored_roles)) > 0 or len(filter_roles(member, self.required_roles)) == 0
+        return len(filter_roles(member, self.required_roles)) == 0
 
     async def roles_to_add_and_remove(self, member: discord.Member, user: DB.User) -> \
             Tuple[List[discord.Role], List[discord.Role]]:
@@ -177,101 +117,23 @@ class RankingExtension(BotExtension):
     #################
 
     async def update_rank(self, member: discord.Member):
-        # Resolve user
-        if member.bot:
-            return
-        user = await self.s_users.get(member)
-        # Skip non-existing users
-        if user is None:
-            log.warning(f'{qualified_name(member)} does not exist in db! Skipping user rank update!')
-            return
-        # Ignore inappropriate members
-        if self.ignore_member(member):
-            return
-        # Resolve roles to move
-        roles_add, roles_del = await self.roles_to_add_and_remove(member, user)
-        report = f'Updating {member.mention} rank:\n'
-        # Remove old roles
-        if roles_del:
-            log.info(f"Removing {qualified_name(member)}'s rank roles: {roles_del}")
-            report += f"Removing rank role {roles_del[0].mention}\n"
-            await member.remove_roles(*roles_del)
-        # Add new roles
-        if roles_add:
-            log.info(f"Adding {qualified_name(member)}'s rank roles: {roles_add}")
-            report += f"Adding rank role {roles_add[0].mention}\n"
-            await member.add_roles(*roles_add)
-        if (roles_del or roles_add) and self.config.log_channel:
-            info_report = self.bot.new_info_report(self.__extname__, report)
-            await self.log_channel.send(embed=info_report)
-        # Update user in db
-        await self.s_users.merge_member(member)
+        pass
 
     async def update_all_ranks(self) -> None:
-        log.info(f'Updating user ranks')
-        async for member in self.bot.guild.fetch_members(limit=None):
-            if member.bot:
-                continue
-            await self.update_rank(member)
-        log.info(f'Done updating user ranks')
+        pass
 
     #########
     # Hooks #
     #########
 
     async def on_config_update(self) -> None:
-        self.config = self.bot.get_config_section(RankingRootConfig)
+        self.config = self.bot.get_config_section(RankingConfig)
         if self.config is None:
             raise InvalidConfigException("RankingRootConfig section not found", "root")
-        # Check log_channel
-        if self.config.log_channel != 0:
-            channel = self.bot.get_channel(self.config.log_channel)
-            if channel is None:
-                raise InvalidConfigException(f'Error channel id is invalid', self.config.path('log_channel'))
-            if not is_text_channel(channel):
-                raise InvalidConfigException(f"{channel.name}({channel.id}) is not text channel",
-                                             self.config.path('log_channel'))
-            log.info(f'Attached to {channel.name} as rank logging channel ({channel.id})')
-            self.log_channel = channel
         # Check rank roles
-        for i, role_name in enumerate(self.ignored_roles):
-            if self.s_roles.get_d_role(role_name) is None:
-                raise InvalidConfigException(f"No such role: '{role_name}'", self.config.path(f"ignored[{i}]"))
         for i, role_name in enumerate(self.required_roles):
             if self.s_roles.get_d_role(role_name) is None:
                 raise InvalidConfigException(f"No such role: '{role_name}'", self.config.path(f"required[{i}]"))
-        # Check rank weights
-        ranks_weights = {}
-        for name, props in self.ranks.items():
-            if self.s_roles.get_d_role(name) is None:
-                raise InvalidConfigException(f"No such role: '{name}'", self.config.path("role"))
-            if props.weight in ranks_weights:
-                dup_rank = ranks_weights[props.weight]
-                raise InvalidConfigException(f"Duplicate weights '{name}', '{dup_rank}'",
-                                             self.config.path(f"role.{name}"))
-            ranks_weights[props.weight] = name
-
-    async def on_message(self, msg: OverlordMessage) -> None:
-        async with self.sync():
-            await self.update_rank(msg.discord.author)
-
-    async def on_message_edit(self, msg: OverlordMessageEdit) -> None:
-        async with self.sync():
-            if self.s_users.is_absent(msg.db.user):
-                return
-            member = await self.bot.guild.fetch_member(msg.db.user.did)
-            await self.update_rank(member)
-
-    async def on_message_delete(self, msg: OverlordMessageDelete) -> None:
-        async with self.sync():
-            if self.s_users.is_absent(msg.db.user):
-                return
-            member = await self.bot.guild.fetch_member(msg.db.user.did)
-            await self.update_rank(member)
-
-    async def on_vc_leave(self, user: OverlordMember, _, __) -> None:
-        async with self.sync():
-            await self.update_rank(user.discord)
 
     ############
     # Commands #
@@ -314,7 +176,7 @@ class RankingExtension(BotExtension):
             await msg.channel.send(f'{R.MESSAGE.ERROR_OTHER.DUPLICATE_WEIGHT}: {ranks_weights[weight]}')
             return
         # Add new rank
-        rank = RankConfig()
+        rank = {}
         rank.weight = weight
         rank.membership = membership
         rank.messages = msg_count
@@ -369,3 +231,7 @@ class RankingExtension(BotExtension):
             details = str(err) + '\n' + 'Config reverted'
             embed = self.bot.new_error_report(err.__class__.__name__, details)
             await msg.channel.send(embed=embed)
+        list_ranks = ["list-ranks", "ranks", "ranks-list"]
+        add_rank = ["add-rank", "new-rank", "ranks-add", "ranks-new"]
+        remove_rank = ["remove-rank", "del-rank", "delete-rank", "ranks-remove", "ranks-del", "ranks-delete"]
+        edit_rank = ["edit-rank", "alter-rank", "ranks-edit"]

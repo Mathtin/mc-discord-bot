@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +28,9 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
-from .event import EventType, MemberEvent, MessageEvent, VoiceChatEvent, ReactionEvent
 from .role import Role
 from .user import User
-from .stat import UserStatType, UserStat
+from .playerprofile import PlayerProfile
+from .rank import Rank
 
-INFO_MODELS = [EventType, UserStatType]
-RELATION_MODELS = [Role, User, MemberEvent, MessageEvent, ReactionEvent, VoiceChatEvent, UserStat]
+RELATION_MODELS = [Role, User, PlayerProfile, Rank]

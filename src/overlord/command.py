@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -128,7 +127,8 @@ class OverlordCommand(IOverlordCommand):
         return res
 
     @staticmethod
-    async def _convert_arg(msg: DIS.Message, ext: IBotExtension, name: str, arg: str, type_: Type[Any]) -> Optional[Any]:
+    async def _convert_arg(msg: DIS.Message, ext: IBotExtension, name: str, arg: str, type_: Type[Any]) \
+            -> Optional[Any]:
         if type_ in _type_arg_converter_map:
             return await _type_arg_converter_map[type_](msg, ext, arg)
         try:
@@ -173,7 +173,8 @@ class OverlordCommand(IOverlordCommand):
 
     @staticmethod
     @SaveFor(DIS.TextChannel)
-    async def _resolve_text_channel_w_fb(fb: DIS.Message, ext: IBotExtension, channel_mention: str) -> Optional[DIS.TextChannel]:
+    async def _resolve_text_channel_w_fb(fb: DIS.Message, ext: IBotExtension, channel_mention: str) -> \
+            Optional[DIS.TextChannel]:
         channel = await ext.bot.resolve_text_channel(channel_mention)
         if channel is None:
             if await ext.bot.resolve_voice_channel(channel_mention) is not None:
@@ -207,7 +208,8 @@ class OverlordCommand(IOverlordCommand):
 
     @staticmethod
     @SaveFor(OverlordMember)
-    async def _resolve_ov_member_w_fb(fb: DIS.Message, ext: IBotExtension, user_mention: str) -> Optional[OverlordMember]:
+    async def _resolve_ov_member_w_fb(fb: DIS.Message, ext: IBotExtension, user_mention: str) -> \
+            Optional[OverlordMember]:
         user = await OverlordCommand._resolve_db_user_w_fb(fb, ext, user_mention)
         if user is None:
             return None

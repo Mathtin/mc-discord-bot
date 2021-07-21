@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +28,7 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
-from .types import OverlordVCState
-from .types import OverlordGenericObject, OverlordMember, OverlordMessage
-from .types import OverlordMessageDelete, OverlordMessageEdit, OverlordRole
-from .types import OverlordUser, OverlordReaction
+from .types import OverlordGenericObject, OverlordMember, OverlordRole, OverlordUser
 from .types import OverlordControlConfig, OverlordRootConfig
 from .task import OverlordTask
 from .command import OverlordCommand

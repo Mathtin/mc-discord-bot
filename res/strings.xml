@@ -14,29 +14,18 @@
       <string type="common" lang="en" name="maintainer">Maintainer</string>
       <string type="common" lang="en" name="state">State</string>
       <string type="common" lang="en" name="progress">Progress</string>
-      <!-- User stat names -->
-      <string type="user-stat" lang="en" name="membership">Membership period</string>
-      <string type="user-stat" lang="en" name="new-message-count">New message count</string>
-      <string type="user-stat" lang="en" name="delete-message-count">Message deleted count</string>
-      <string type="user-stat" lang="en" name="edit-message-count">Message edited count</string>
-      <string type="user-stat" lang="en" name="new-reaction-count">Reactions count</string>
-      <string type="user-stat" lang="en" name="delete-reaction-count">Reaction remove count</string>
-      <string type="user-stat" lang="en" name="vc-time">VC time</string>
-      <string type="user-stat" lang="en" name="min-weight">Minimal weight (rank)</string>
-      <string type="user-stat" lang="en" name="max-weight">Maximal weight (rank)</string>
-      <string type="user-stat" lang="en" name="exact-weight">Exact weight (rank)</string>
    </names>
 
    <embeds>
       <!-- Defaults header/footer -->
-      <string type="header" lang="en" name="default">Overlord Discord Bot</string>
-      <string type="footer" lang="en" name="default">Overlord by Daniel [Mathtin] Shiko. Special for Eclipse Co. comms</string>
+      <string type="header" lang="en" name="default">Minecraft Discord Bot</string>
+      <string type="footer" lang="en" name="default">MC Bot by Daniel [Mathtin] Shiko. Special for Eclipse Co. comms</string>
 
       <!-- Custom headers -->
-      <string type="header" lang="en" name="error-report">Overlord Error report</string>
-      <string type="header" lang="en" name="warn-report">Overlord Warning</string>
-      <string type="header" lang="en" name="info-report">Overlord Information</string>
-      <string type="header" lang="en" name="log-report">Overlord Logging</string>
+      <string type="header" lang="en" name="error-report">MC Bot Error report</string>
+      <string type="header" lang="en" name="warn-report">MC Bot Warning</string>
+      <string type="header" lang="en" name="info-report">MC Bot Information</string>
+      <string type="header" lang="en" name="log-report">MC Bot Logging</string>
 
       <!-- report titles -->
       <string type="title" lang="en" name="success">Done</string>
@@ -46,7 +35,7 @@
       <string type="title" lang="en" name="traceback">Traceback</string>
 
       <!-- other titles -->
-      <string type="title" lang="en" name="summary">Overlord Summary</string>
+      <string type="title" lang="en" name="summary">MC Bot Summary</string>
       <string type="title" lang="en" name="call-args">Event call arguments</string>
       <string type="title" lang="en" name="commands-list">Available commands</string>
       <string type="title" lang="en" name="stat-type-list">Available stat names</string>
@@ -62,15 +51,14 @@
       <string type="status" lang="en" name="committing">Committing changes...</string>
       <string type="status" lang="en" name="busy">Sorry, I'm very busy right now</string>
       <string type="status" lang="en" name="ping">Pong!</string>
+      <string type="status" lang="en" name="removing-dynamic-profiles">Clearing profiles posted by users</string>
+      <string type="status" lang="en" name="loading-dynamic-profiles">Loading profiles posted by users</string>
+      <string type="status" lang="en" name="sync-whitelist">Synchronizing whitelist between servers</string>
       <string type="status" lang="en" name="sync-users">Synchronizing users</string>
       <string type="status" lang="en" name="updating-ranks">Updating user ranks</string>
       <string type="status" lang="en" name="updating-rank">Updating rank</string>
-      <string type="status" lang="en" name="db-clear-channel">Clearing message history from database</string>
-      <string type="status" lang="en" name="db-load-channel">Loading message history</string>
       <string type="status" lang="en" name="db-drop-table">Clearing table</string>
       <string type="status" lang="en" name="db-drop">Clearing database</string>
-      <string type="status" lang="en" name="clear-stats">Clearing stats</string>
-      <string type="status" lang="en" name="calc-stats">Calculating stats</string>
       <string type="status" lang="en" name="stop-extension">Disabling extension</string>
       <string type="status" lang="en" name="reported-to">Reported to</string>
       <string type="status" lang="en" name="started">Bot started successfully</string>
@@ -118,9 +106,6 @@
       <string type="error-other" lang="en" name="invalid-rank">Invalid rank</string>
       <string type="error-other" lang="en" name="unknown-rank">No such rank</string>
       <string type="error-other" lang="en" name="duplicate-rank">Rank already exists</string>
-      <string type="error-other" lang="en" name="duplicate-weight">Rank with same weight already exists</string>
-      <string type="error-other" lang="en" name="unknown-stat">No such stat</string>
-      <string type="error-other" lang="en" name="negative-stat-value">Stat value should be positive</string>
    </messages>
    
 </resources>

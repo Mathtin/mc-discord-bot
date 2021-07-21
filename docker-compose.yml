@@ -10,16 +10,16 @@ services:
             - ./db/data/:/var/lib/postgresql/data/
             - ./scripts/01_users.sql:/docker-entrypoint-initdb.d/01_users.sql
         networks:
-            - overlord-net
+            - mc-bot-net
     overlord:
-        container_name: overlord_container
-        image: mathtin/overlord:latest
+        container_name: mc_bot_container
+        image: mathtin/mc-discord-bot:latest
         restart: unless-stopped
         env_file:
-            - ./overlord.env
+            - ./mc-bot.env
         volumes:
-            - ./overlord.cfg:/app/overlord.cfg
+            - ./mc-bot.cfg:/app/mc-bot.cfg
         networks:
-            - overlord-net
+            - mc-bot-net
 networks:
-  overlord-net: {}
+  mc-bot-net: {}

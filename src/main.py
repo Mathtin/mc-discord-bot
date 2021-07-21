@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -43,19 +42,19 @@ from db import DBConnection
 from services.provider import ServiceProvider
 from overlord import OverlordRootConfig
 from overlord.bot import Overlord
-from extensions import UtilityExtension, RankingExtension, ConfigExtension, StatsExtension, InviteExtension
-from extensions import RankingRootConfig, InviteRootConfig
+from extensions import UtilityExtension, RankingExtension, ConfigExtension, WhitelistExtension
+from extensions import RankingConfig, WhitelistConfig
 
 
 class ExtensionsConfig(ConfigView):
     """
     extension {
-        rank   : RankingRootConfig
-        invite : InviteRootConfig
+        rank      : RankingRootConfig
+        whitelist : WhitelistConfig
     }
     """
-    rank: RankingRootConfig = RankingRootConfig()
-    invite: InviteRootConfig = InviteRootConfig()
+    rank: RankingConfig = RankingConfig()
+    whitelist: WhitelistConfig = WhitelistConfig()
 
 
 class RootConfig(ConfigView):
@@ -80,8 +79,8 @@ class Configuration(ConfigManager):
 def main(argv):
 
     # Parse arguments
-    parser = argparse.ArgumentParser(description='Overlord Discord Bot')
-    parser.add_argument('-c', '--config', nargs='?', type=str, default='overlord.cfg', help='config path')
+    parser = argparse.ArgumentParser(description='Minecraft Discord Bot')
+    parser.add_argument('-c', '--config', nargs='?', type=str, default='mc-bot.cfg', help='config path')
     args = parser.parse_args(argv[1:])
 
     # Load config
@@ -89,12 +88,6 @@ def main(argv):
 
     # Init database
     url = os.getenv('DATABASE_ACCESS_URL')
-    if 'sqlite' in url:
-        import db.queries as q
-        q.MODE = q.MODE_SQLITE
-    if 'postgresql' in url:
-        import db.queries as q
-        q.MODE = q.MODE_POSTGRESQL
     connection = DBConnection(url)
     services = ServiceProvider(connection)
 
@@ -103,17 +96,15 @@ def main(argv):
 
     # Init extensions
     extras_ext = UtilityExtension(bot=discord_bot)
-    stats_ext = StatsExtension(bot=discord_bot)
-    ranking_ext = RankingExtension(bot=discord_bot, priority=1)
     conf_ext = ConfigExtension(bot=discord_bot)
-    # invite_ext = InviteExtension(bot=discord_bot)
+    wl_ext = WhitelistExtension(bot=discord_bot)
+    # ranking_ext = RankingExtension(bot=discord_bot)
 
     # Attach extensions
     discord_bot.extend(extras_ext)
     discord_bot.extend(conf_ext)
-    discord_bot.extend(stats_ext)
-    discord_bot.extend(ranking_ext)
-    # discord_bot.extend(invite_ext)
+    discord_bot.extend(wl_ext)
+    # discord_bot.extend(ranking_ext)
 
     # Start bot
     discord_bot.run()

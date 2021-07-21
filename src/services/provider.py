@@ -4,9 +4,8 @@
 """
 MIT License
 
-Copyright (c) 2020-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
-Project: Overlord discord bot
-Contributors: Danila [DeadBlasoul] Popov <dead.blasoul@gmail.com>
+Copyright (c) 2021-present Daniel [Mathtin] Shiko <wdaniil@mail.ru>
+Project: Minecraft Discord Bot
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,25 +32,22 @@ from db import DBConnection
 
 from .role import RoleService
 from .user import UserService
-from .event import EventService
-from .stat import StatService
+from .playerprofile import PlayerProfileService
 
 
 class ServiceProvider(object):
     _db: DBConnection
 
-    _s_roles:  RoleService
-    _s_users:  UserService
-    _s_events: EventService
-    _s_stats:  StatService
+    _s_roles:            RoleService
+    _s_users:            UserService
+    _s_player_profiles:  PlayerProfileService
 
     def __init__(self, db: DBConnection):
         self._db = db
 
         self._s_roles = RoleService(self._db)
         self._s_users = UserService(self._db, self._s_roles)
-        self._s_events = EventService(self._db)
-        self._s_stats = StatService(self._db, self._s_events)
+        self._s_player_profiles = PlayerProfileService(self._db, self._s_users)
 
     @property
     def role(self) -> RoleService:
@@ -62,9 +58,5 @@ class ServiceProvider(object):
         return self._s_users
 
     @property
-    def event(self) -> EventService:
-        return self._s_events
-
-    @property
-    def stat(self) -> StatService:
-        return self._s_stats
+    def player_profiles(self) -> PlayerProfileService:
+        return self._s_player_profiles
