@@ -30,6 +30,7 @@ __author__ = "Mathtin"
 
 import logging
 from typing import Optional, Union, List
+from uuid import UUID
 
 import discord
 from sqlalchemy import select
@@ -77,6 +78,12 @@ class PlayerProfileService(DBService):
 
     async def get_by_ign(self, ign: str) -> Optional[DB.PlayerProfile]:
         return await self.get_optional(q.select_player_profile_by_ign(ign))
+
+    def get_by_uuid_sync(self, uuid: Union[UUID, str]) -> Optional[DB.PlayerProfile]:
+        return self.get_optional_sync(q.select_player_profile_by_uuid(str(uuid)))
+
+    async def get_by_uuid(self, uuid: Union[UUID, str]) -> Optional[DB.PlayerProfile]:
+        return await self.get_optional(q.select_player_profile_by_uuid(str(uuid)))
 
     def get_by_message_did_sync(self, did: int) -> Optional[DB.PlayerProfile]:
         return self.get_optional_sync(q.select_player_profile_by_message_did(did))

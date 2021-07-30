@@ -69,6 +69,10 @@ def select_player_profile_by_ign(ign: str) -> Select:
     return select(PlayerProfile).where(PlayerProfile.ign == ign)
 
 
+def select_player_profile_by_uuid(uuid: str) -> Select:
+    return select(PlayerProfile).where(PlayerProfile.uuid == uuid)
+
+
 def select_player_profile_by_message_did(did: int) -> Select:
     return select(PlayerProfile).where(PlayerProfile.message_did == did)
 

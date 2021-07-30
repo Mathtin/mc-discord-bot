@@ -31,6 +31,7 @@ __author__ = "Mathtin"
 import io
 import json
 import logging
+import re
 from typing import List, Dict
 
 import discord
@@ -44,8 +45,9 @@ from util.resources import STRINGS as R
 from util.exceptions import InvalidConfigException
 from util.extbot import is_text_channel, quote_msg, filter_roles, qualified_name
 from util.mcuuid import PlayerData
+from util.ftp import server_exists as ftp_server_exists, upload_file_content as ftp_upload_file_content
 
-log = logging.getLogger('ranking-extension')
+log = logging.getLogger('whitelist-extension')
 
 
 def parse_colon_separated(msg: str) -> Dict[str, str]:
@@ -106,17 +108,30 @@ The profile has been removed but don't worry. Here is copy of your message:
 # Whitelist Config #
 ####################
 
+class WhitelistServerConfig(ConfigView):
+    """
+    server_... {
+        access = "..."
+    }
+    """
+    access: str = "ftp"
+
+
 class WhitelistConfig(ConfigView):
     """
     whitelist {
         channel = ...
         remove_deprecated_profiles = ...
         required = ["────────[Minecraft]────────"]
+        servers {
+            WhitelistServerConfig...
+        }
     }
     """
     channel: int = 0
     remove_deprecated_profiles: bool = False
     required: List[str] = []
+    servers: Dict[str, WhitelistServerConfig] = {}
 
 
 #####################
@@ -133,6 +148,7 @@ class WhitelistExtension(BotExtension):
 
     _dry_sync: bool
     _dry_run: bool
+    _server_name_map: Dict[str, str]
 
     #########
     # Props #
@@ -165,6 +181,10 @@ class WhitelistExtension(BotExtension):
         if self._dry_sync or self._dry_run:
             return
         log.info("Synchronizing whitelist")
+        wl = (await self.get_whitelist_json()).encode()
+        for server_entry, server_config in self.config.servers.items():
+            server_name = self._server_name_map[server_entry]
+            ftp_upload_file_content(wl, 'whitelist.json', server_name)
         pass
 
     #################
@@ -222,6 +242,20 @@ class WhitelistExtension(BotExtension):
         for i, role_name in enumerate(self.required_roles):
             if self.s_roles.get_d_role(role_name) is None:
                 raise InvalidConfigException(f"No such role: '{role_name}'", self.config.path(f"required[{i}]"))
+        # Check servers
+        self._server_name_map = {}
+        for server_entry, server_config in self.config.servers.items():
+            match = re.fullmatch(r'server_(\w+)', server_entry)
+            if not match:
+                raise InvalidConfigException('Invalid server name. Example: server_main', self.config.path('servers'))
+            server_name = match.group(1)
+            if not ftp_server_exists(server_name):
+                raise InvalidConfigException(f'Server {server_name} not found',
+                                             self.config.path(f'servers.{server_name}'))
+            if server_config.access != "ftp":
+                raise InvalidConfigException(f'Invalid access type',
+                                             self.config.path(f'servers.{server_name}.access'))
+            self._server_name_map[server_entry] = server_name
 
     async def on_message(self, msg: discord.Message) -> None:
         if msg.channel != self.channel:
@@ -232,20 +266,19 @@ class WhitelistExtension(BotExtension):
         try:
             member = await self.bot.guild.fetch_member(msg.author.id)
         except discord.NotFound:
-            if self.config.remove_deprecated_profiles:
-                '''
-                await msg.delete()
-                '''
+            if self.config.remove_deprecated_profiles and not self._dry_run:
                 log.info(f'Removing \'{limited_msg}\' from {msg.author.name} (user left)')
+                await msg.delete()
             else:
                 log.info(f'Ignoring \'{limited_msg}\' from {msg.author.name} (user left)')
             return
 
         if self.ignore_member(member):
-            '''
-            await msg.delete()
-            '''
-            log.info(f'Ignoring \'{limited_msg}\' from {member.display_name}')
+            if self._dry_run:
+                log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (requirements not met)')
+            else:
+                await msg.delete()
+                log.info(f'Removing \'{limited_msg}\' from {member.display_name} (requirements not met)')
             return
 
         user = await self.s_users.get(member)
@@ -253,67 +286,77 @@ class WhitelistExtension(BotExtension):
 
         # Handle invalid profile
         if 'ign' not in parsed:
-            if self.bot.is_admin(msg.author):
+            if self.bot.is_admin(member):
                 log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid profile from admin)')
                 return
+            if self._dry_run:
+                log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid profile)')
+                return
             log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid profile)')
-            '''
             report = INVALID_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
             await msg.delete()
             try:
+                log.info(f'Sending report to {member.display_name} (invalid profile)')
                 await member.send(report)
             except discord.Forbidden:
-                pass
-            '''
+                log.warning(f'{member.display_name} forbid dm messages')
             return
 
-        ign = parsed['ign']
-        player_data = PlayerData(ign)
+        player_data = PlayerData(parsed['ign'])
 
         # Handle invalid ign
         if not player_data.valid:
-            if self.bot.is_admin(msg.author):
+            if self.bot.is_admin(member):
                 log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid ign from admin)')
                 return
+            if self._dry_run:
+                log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid ign)')
+                return
             log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid ign)')
-            '''
             report = INVALID_PROFILE_IGN_DM_MSG.format(member.name, quote_msg(msg.content))
             await msg.delete()
             try:
+                log.info(f'Sending report to {member.display_name} (invalid ign)')
                 await member.send(report)
             except discord.Forbidden:
-                pass
-            '''
+                log.warning(f'{member.display_name} forbid dm messages')
             return
 
         async with self.sync():
             # Handle existing
-            existing = await self.s_profiles.get_by_ign(ign)
+            existing = await self.s_profiles.get_by_uuid(player_data.uuid)
             if existing is not None:
                 if existing.user.did != member.id:
+                    if self._dry_run:
+                        log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (duplicate ign)')
+                        return
                     log.info(f'Removing \'{limited_msg}\' from {member.display_name} (duplicate ign)')
-                    '''
                     report = FOREIGN_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
                     await msg.delete()
                     try:
+                        log.info(f'Sending report to {member.display_name} (duplicate ign)')
                         await member.send(report)
                     except discord.Forbidden:
-                        pass
-                    '''
-                else:
-                    if existing.message_did is not None:
-                        old_msg = await self.channel.fetch_message(existing.message_did)
-                        limited_old_msg = old_msg.content[:30].replace('\n', ' ') + '...' if len(old_msg.content) > 10 \
-                            else old_msg.content
+                        log.warning(f'{member.display_name} forbid dm messages')
+                    return
+                # Handle profile update
+                if existing.message_did is not None:
+                    old_msg = await self.channel.fetch_message(existing.message_did)
+                    limited_old_msg = old_msg.content[:30].replace('\n', ' ') + '...' if len(old_msg.content) > 10 \
+                        else old_msg.content
+                    if self._dry_run:
+                        log.info(f'Ignoring \'{limited_old_msg}\' from {member.display_name} (old profile)')
+                    else:
                         log.info(f'Removing \'{limited_old_msg}\' from {member.display_name} (old profile)')
-                        '''
                         await old_msg.delete()
-                        '''
-                    existing.message_did = msg.id
-                    existing.profile = msg.content
-                    await self.s_profiles.save(existing)
-                    self.sync_whitelist()
+                existing.message_did = msg.id
+                existing.profile = msg.content
+                log.info(f'Updating {member.display_name}\'s profile')
+                await self.s_profiles.save(existing)
+                self.sync_whitelist()
                 return
+            # Handle new profile
+            log.info(f'Adding {member.display_name}\'s profile')
             await self.s_profiles.add_profile(user, player_data, msg)
             self.sync_whitelist()
 
@@ -333,66 +376,80 @@ class WhitelistExtension(BotExtension):
 
         # Handle invalid profile
         if 'ign' not in parsed:
-            log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid profile)')
-            '''
-            report = INVALID_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
-            await msg.delete()
-            try:
-                await member.send(report)
-            except discord.Forbidden:
-                pass
-            '''
+            if self._dry_run:
+                log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid profile)')
+            else:
+                log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid profile)')
+                report = INVALID_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
+                await msg.delete()
+                try:
+                    log.info(f'Sending report to {member.display_name} (invalid profile)')
+                    await member.send(report)
+                except discord.Forbidden:
+                    log.warning(f'{member.display_name} forbid dm messages')
+            log.info(f'Removing {member.display_name}\'s profile')
             await self.s_profiles.remove(profile)
             self.sync_whitelist()
             return
 
-        ign = parsed['ign']
-        player_data = PlayerData(ign)
+        player_data = PlayerData(parsed['ign'])
 
         # Handle invalid ign
         if not player_data.valid:
-            log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid ign)')
-            '''
-            report = INVALID_PROFILE_IGN_DM_MSG.format(member.name, quote_msg(msg.content))
-            await msg.delete()
-            try:
-                await member.send(report)
-            except discord.Forbidden:
-                pass
-            '''
+            if self._dry_run:
+                log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (invalid ign)')
+            else:
+                log.info(f'Removing \'{limited_msg}\' from {member.display_name} (invalid ign)')
+                report = INVALID_PROFILE_IGN_DM_MSG.format(member.name, quote_msg(msg.content))
+                await msg.delete()
+                try:
+                    log.info(f'Sending report to {member.display_name} (invalid ign)')
+                    await member.send(report)
+                except discord.Forbidden:
+                    log.warning(f'{member.display_name} forbid dm messages')
+            log.info(f'Removing {member.display_name}\'s profile')
             await self.s_profiles.remove(profile)
             self.sync_whitelist()
             return
 
         async with self.sync():
             # Handle existing
-            existing = await self.s_profiles.get_by_ign(ign)
+            existing = await self.s_profiles.get_by_uuid(player_data.uuid)
             if existing is not None:
                 if existing.user.did != member.id:
-                    log.info(f'Removing \'{limited_msg}\' from {member.display_name} (duplicate ign)')
-                    '''
-                    report = FOREIGN_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
-                    await msg.delete()
-                    try:
-                        await member.send(report)
-                    except discord.Forbidden:
-                        pass
-                    '''
+                    if self._dry_run:
+                        log.info(f'Ignoring \'{limited_msg}\' from {member.display_name} (duplicate ign)')
+                    else:
+                        log.info(f'Removing \'{limited_msg}\' from {member.display_name} (duplicate ign)')
+                        report = FOREIGN_PROFILE_DM_MSG.format(member.name, quote_msg(msg.content))
+                        await msg.delete()
+                        try:
+                            log.info(f'Sending report to {member.display_name} (duplicate ign)')
+                            await member.send(report)
+                        except discord.Forbidden:
+                            log.warning(f'{member.display_name} forbid dm messages')
+                    log.info(f'Removing {member.display_name}\'s profile')
                     await self.s_profiles.remove(profile)
                     self.sync_whitelist()
                     return
-                elif existing.message_did != profile.message_did:
+                # Handle profile update
+                if existing.message_did != profile.message_did:
                     old_msg = await self.channel.fetch_message(existing.message_did)
                     limited_old_msg = old_msg.content[:30].replace('\n', ' ') + '...' if len(old_msg.content) > 10 \
                         else old_msg.content
-                    log.info(f'Removing \'{limited_old_msg}\' from {member.display_name} (old profile)')
-                    '''
-                    await old_msg.delete()
-                    '''
-
-        profile.profile = msg.content
-        await self.s_profiles.save(profile)
-        self.sync_whitelist()
+                    if self._dry_run:
+                        log.info(f'Ignoring \'{limited_old_msg}\' from {member.display_name} (old profile)')
+                    else:
+                        log.info(f'Removing \'{limited_old_msg}\' from {member.display_name} (old profile)')
+                        await old_msg.delete()
+            # Update profile entry
+            profile.ign = player_data.username
+            profile.uuid = str(player_data.uuid)
+            profile.profile = msg.content
+            profile.message_did = msg.id
+            log.info(f'Updating {member.display_name}\'s profile')
+            await self.s_profiles.save(profile)
+            self.sync_whitelist()
 
     async def on_message_delete(self, raw: discord.RawMessageUpdateEvent) -> None:
         if raw.channel_id != self.channel.id:
@@ -402,11 +459,13 @@ class WhitelistExtension(BotExtension):
             if profile is None:
                 return
             if profile.persistent:
+                log.info(f'Unlinking persistent profile (message removed)')
                 profile.profile = None
                 profile.message_did = None
                 await self.s_profiles.save(profile)
                 self.sync_whitelist()
                 return
+            log.info(f'Removing profile (message removed)')
             await self.s_profiles.remove(profile)
             self.sync_whitelist()
 
@@ -421,10 +480,13 @@ class WhitelistExtension(BotExtension):
                     continue
                 msg = await self.channel.fetch_message(profile.message_did)
                 limited_msg = msg.content[:30].replace('\n', ' ') + '...' if len(msg.content) > 10 else msg.content
-                '''
-                await msg.delete()
-                '''
-                log.info(f'Removing \'{limited_msg}\' from {after.discord.display_name} (lost required role)')
+                if self._dry_run:
+                    log.info(f'Ignoring \'{limited_msg}\' from {after.discord.display_name} (lost required role)')
+                else:
+                    log.info(f'Removing \'{limited_msg}\' from {after.discord.display_name} (lost required role)')
+                    await msg.delete()
+                    log.info(f'Removing profile (lost required role)')
+                    await self.s_profiles.remove(profile)
 
     async def on_member_remove(self, member: OverlordMember) -> None:
         if self.ignore_member(member.discord):
@@ -436,10 +498,13 @@ class WhitelistExtension(BotExtension):
                     continue
                 msg = await self.channel.fetch_message(profile.message_did)
                 limited_msg = msg.content[:30].replace('\n', ' ') + '...' if len(msg.content) > 10 else msg.content
-                log.info(f'Removing \'{limited_msg}\' from {member.discord.display_name} (user left server)')
-                '''
-                await msg.delete()
-                '''
+                if self._dry_run:
+                    log.info(f'Keeping \'{limited_msg}\' from {member.discord.display_name} (user left server)')
+                else:
+                    log.info(f'Removing \'{limited_msg}\' from {member.discord.display_name} (user left server)')
+                    await msg.delete()
+                    log.info(f'Removing profile (user left server)')
+                    await self.s_profiles.remove(profile)
 
     ############
     # Commands #

@@ -48,7 +48,7 @@ from util.logger import DiscordLogConfig
 from util.resources import STRINGS as R
 from .types import OverlordMember, OverlordRole, IBotExtension, OverlordRootConfig
 
-log = logging.getLogger('overlord-bot')
+log = logging.getLogger('mc-bot')
 
 
 #############################
@@ -357,7 +357,7 @@ class Overlord(discord.Client):
             if member.bot:
                 continue
             # Update and repair
-            user = await self.services.user.merge_member(member)
+            await self.services.user.merge_member(member)
         # Remove effectively absent
         if not self.config.keep_absent_users:
             await self.services.user.remove_absent()
@@ -543,7 +543,7 @@ class Overlord(discord.Client):
             Calls appropriate control callback
         """
         # Filter non-admins
-        if not self.is_admin(message.author):
+        if not is_dm_message(message) and not self.is_admin(message.author):
             return
         # Parse argv
         argv = parse_control_message(self.prefix, message)

@@ -230,9 +230,15 @@ class BotExtension(IBotExtension):
         channel_report = self.bot.new_error_report(name, str(ex) + '\n' + reported_to)
 
         if self.bot.log_channel is not None and event != 'on_ready':
-            await self.bot.log_channel.send(embed=channel_report)
+            try:
+                await self.bot.log_channel.send(embed=channel_report)
+            except Exception:
+                pass
 
-        await self.bot.maintainer.send(embed=maintainer_report)
+        try:
+            await self.bot.maintainer.send(embed=maintainer_report)
+        except Exception:
+            pass
 
         self.stop()
 

@@ -111,7 +111,7 @@ def qualified_name(user: Union[discord.User, discord.Member]) -> str:
 
 
 def quote_msg(msg: str) -> str:
-    return '\n'.join([f'> `{line}`' for line in msg.replace("`", "\\`").splitlines()])
+    return '\n'.join([f'> {line}' for line in msg.replace("`", "\\`").splitlines()])
 
 
 def code_msg(msg: str) -> str:
