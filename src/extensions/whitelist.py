@@ -177,16 +177,6 @@ class WhitelistExtension(BotExtension):
     def ignore_member(self, member: discord.Member) -> bool:
         return len(filter_roles(member, self.required_roles)) == 0
 
-    def sync_whitelist(self) -> None:
-        if self._dry_sync or self._dry_run:
-            return
-        log.info("Synchronizing whitelist")
-        wl = (await self.get_whitelist_json()).encode()
-        for server_entry, server_config in self.config.servers.items():
-            server_name = self._server_name_map[server_entry]
-            ftp_upload_file_content(wl, 'whitelist.json', server_name)
-        pass
-
     #################
     # Async Methods #
     #################
@@ -211,6 +201,16 @@ class WhitelistExtension(BotExtension):
     async def get_whitelist_json(self) -> str:
         profiles = await self.s_profiles.get_all()
         return json.dumps([{"uuid": p.uuid, "name": p.ign} for p in profiles], indent=4)
+
+    async def sync_whitelist(self) -> None:
+        if self._dry_sync or self._dry_run:
+            return
+        log.info("Synchronizing whitelist")
+        wl = (await self.get_whitelist_json()).encode()
+        for server_entry, server_config in self.config.servers.items():
+            server_name = self._server_name_map[server_entry]
+            ftp_upload_file_content(wl, 'whitelist.json', server_name)
+        pass
 
     #########
     # Hooks #
@@ -353,12 +353,12 @@ class WhitelistExtension(BotExtension):
                 existing.profile = msg.content
                 log.info(f'Updating {member.display_name}\'s profile')
                 await self.s_profiles.save(existing)
-                self.sync_whitelist()
+                await self.sync_whitelist()
                 return
             # Handle new profile
             log.info(f'Adding {member.display_name}\'s profile')
             await self.s_profiles.add_profile(user, player_data, msg)
-            self.sync_whitelist()
+            await self.sync_whitelist()
 
     async def on_message_edit(self, raw: discord.RawMessageUpdateEvent) -> None:
         if raw.channel_id != self.channel.id:
@@ -389,7 +389,7 @@ class WhitelistExtension(BotExtension):
                     log.warning(f'{member.display_name} forbid dm messages')
             log.info(f'Removing {member.display_name}\'s profile')
             await self.s_profiles.remove(profile)
-            self.sync_whitelist()
+            await self.sync_whitelist()
             return
 
         player_data = PlayerData(parsed['ign'])
@@ -409,7 +409,7 @@ class WhitelistExtension(BotExtension):
                     log.warning(f'{member.display_name} forbid dm messages')
             log.info(f'Removing {member.display_name}\'s profile')
             await self.s_profiles.remove(profile)
-            self.sync_whitelist()
+            await self.sync_whitelist()
             return
 
         async with self.sync():
@@ -430,7 +430,7 @@ class WhitelistExtension(BotExtension):
                             log.warning(f'{member.display_name} forbid dm messages')
                     log.info(f'Removing {member.display_name}\'s profile')
                     await self.s_profiles.remove(profile)
-                    self.sync_whitelist()
+                    await self.sync_whitelist()
                     return
                 # Handle profile update
                 if existing.message_did != profile.message_did:
@@ -449,7 +449,7 @@ class WhitelistExtension(BotExtension):
             profile.message_did = msg.id
             log.info(f'Updating {member.display_name}\'s profile')
             await self.s_profiles.save(profile)
-            self.sync_whitelist()
+            await self.sync_whitelist()
 
     async def on_message_delete(self, raw: discord.RawMessageUpdateEvent) -> None:
         if raw.channel_id != self.channel.id:
@@ -463,11 +463,11 @@ class WhitelistExtension(BotExtension):
                 profile.profile = None
                 profile.message_did = None
                 await self.s_profiles.save(profile)
-                self.sync_whitelist()
+                await self.sync_whitelist()
                 return
             log.info(f'Removing profile (message removed)')
             await self.s_profiles.remove(profile)
-            self.sync_whitelist()
+            await self.sync_whitelist()
 
     async def on_member_update(self, before: OverlordMember, after: OverlordMember) -> None:
         if self.ignore_member(before.discord) or not self.ignore_member(after.discord):
@@ -545,12 +545,12 @@ class WhitelistExtension(BotExtension):
             raise
         finally:
             self._dry_sync = False
-        self.sync_whitelist()
+        await self.sync_whitelist()
         await progress.finish()
 
     @BotExtension.command("sync_wl", description="Synchronize whitelist between servers")
     async def cmd_sync_wl(self, msg: discord.Message):
-        self.sync_whitelist()
+        await self.sync_whitelist()
         await msg.channel.send(R.MESSAGE.STATUS.SUCCESS)
 
     @BotExtension.command("wl_add", description="Add persistent whitelist entry")
