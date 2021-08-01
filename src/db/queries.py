@@ -61,8 +61,20 @@ def select_user_by_q_name(name: str, disc: int) -> Select:
     return select(User).where(User.name == name, User.disc == disc)
 
 
-def select_player_profile_by_did(did: int) -> Select:
+def select_player_profiles() -> Select:
+    return select(PlayerProfile)
+
+
+def select_player_profiles_whitelisted() -> Select:
+    return select(PlayerProfile).join(User).where(not PlayerProfile.banned)
+
+
+def select_player_profiles_by_did(did: int) -> Select:
     return select(PlayerProfile).join(User).where(User.did == did)
+
+
+def select_player_profiles_by_did_whitelisted(did: int) -> Select:
+    return select(PlayerProfile).join(User).where(User.did == did and not PlayerProfile.banned)
 
 
 def select_player_profile_by_ign(ign: str) -> Select:

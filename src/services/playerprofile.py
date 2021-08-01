@@ -33,7 +33,6 @@ from typing import Optional, Union, List
 from uuid import UUID
 
 import discord
-from sqlalchemy import select
 
 import db as DB
 import db.converters as conv
@@ -61,17 +60,37 @@ class PlayerProfileService(DBService):
 
     def get_sync_all(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
         if d_user is None:
-            return self.get_list_sync(select(DB.PlayerProfile))
+            return self.get_list_sync(q.select_player_profiles())
         if isinstance(d_user, DB.User):
-            return self.get_list_sync(q.select_player_profile_by_did(d_user.did))
-        return self.get_list_sync(q.select_player_profile_by_did(d_user.id))
+            return self.get_list_sync(q.select_player_profiles_by_did(d_user.did))
+        return self.get_list_sync(q.select_player_profiles_by_did(d_user.id))
 
     async def get_all(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
         if d_user is None:
-            return await self.get_list(select(DB.PlayerProfile))
+            return await self.get_list(q.select_player_profiles())
         if isinstance(d_user, DB.User):
-            return await self.get_list(q.select_player_profile_by_did(d_user.did))
-        return await self.get_list(q.select_player_profile_by_did(d_user.id))
+            return await self.get_list(q.select_player_profiles_by_did(d_user.did))
+        return await self.get_list(q.select_player_profiles_by_did(d_user.id))
+
+    def get_whitelisted_all(self,
+                            d_user: Union[discord.User,
+                                          discord.Member,
+                                          DB.User] = None) -> List[DB.PlayerProfile]:
+        if d_user is None:
+            return self.get_list_sync(q.select_player_profiles_whitelisted())
+        if isinstance(d_user, DB.User):
+            return self.get_list_sync(q.select_player_profiles_by_did_whitelisted(d_user.did))
+        return self.get_list_sync(q.select_player_profiles_by_did_whitelisted(d_user.id))
+
+    async def get_whitelisted(self,
+                              d_user: Union[discord.User,
+                                            discord.Member,
+                                            DB.User] = None) -> List[DB.PlayerProfile]:
+        if d_user is None:
+            return await self.get_list(q.select_player_profiles_whitelisted())
+        if isinstance(d_user, DB.User):
+            return await self.get_list(q.select_player_profiles_by_did_whitelisted(d_user.did))
+        return await self.get_list(q.select_player_profiles_by_did_whitelisted(d_user.id))
 
     def get_by_ign_sync(self, ign: str) -> Optional[DB.PlayerProfile]:
         return self.get_optional_sync(q.select_player_profile_by_ign(ign))
