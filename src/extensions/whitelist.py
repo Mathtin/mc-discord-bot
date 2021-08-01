@@ -46,6 +46,7 @@ from util.exceptions import InvalidConfigException
 from util.extbot import is_text_channel, quote_msg, filter_roles, qualified_name
 from util.mcuuid import PlayerData
 from util.ftp import server_exists as ftp_server_exists, upload_file_content as ftp_upload_file_content
+from util.sftp import server_exists as sftp_server_exists, upload_file_content as sftp_upload_file_content
 
 log = logging.getLogger('whitelist-extension')
 
@@ -209,7 +210,11 @@ class WhitelistExtension(BotExtension):
         wl = (await self.get_whitelist_json()).encode()
         for server_entry, server_config in self.config.servers.items():
             server_name = self._server_name_map[server_entry]
-            ftp_upload_file_content(wl, 'whitelist.json', server_name)
+            if server_config.access == 'ftp':
+                ftp_upload_file_content(wl, 'whitelist.json', server_name)
+            elif server_config.access == 'sftp':
+                sftp_upload_file_content(wl, 'whitelist.json', server_name)
+
         pass
 
     #########
@@ -249,12 +254,17 @@ class WhitelistExtension(BotExtension):
             if not match:
                 raise InvalidConfigException('Invalid server name. Example: server_main', self.config.path('servers'))
             server_name = match.group(1)
-            if not ftp_server_exists(server_name):
-                raise InvalidConfigException(f'Server {server_name} not found',
-                                             self.config.path(f'servers.{server_name}'))
-            if server_config.access != "ftp":
+            if server_config.access not in ["ftp", "sftp"]:
                 raise InvalidConfigException(f'Invalid access type',
                                              self.config.path(f'servers.{server_name}.access'))
+            if server_config.access == "ftp":
+                if not ftp_server_exists(server_name):
+                    raise InvalidConfigException(f'Server {server_name} not found',
+                                                 self.config.path(f'servers.{server_name}'))
+            elif server_config.access == "sftp":
+                if not sftp_server_exists(server_name):
+                    raise InvalidConfigException(f'Server {server_name} not found',
+                                                 self.config.path(f'servers.{server_name}'))
             self._server_name_map[server_entry] = server_name
 
     async def on_message(self, msg: discord.Message) -> None:

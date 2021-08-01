@@ -6,3 +6,4 @@ lark-parser == 0.11.2
 psycopg2 == 2.8.6
 asyncpg == 0.22.0
 requests == 2.26.0
+pysftp == 0.2.9
