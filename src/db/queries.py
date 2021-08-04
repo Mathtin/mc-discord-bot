@@ -28,14 +28,11 @@ SOFTWARE.
 
 __author__ = "Mathtin"
 
-from datetime import datetime
-from typing import Any, Tuple, List, Type
+from typing import Type
 
-from sqlalchemy import func, and_, literal_column, Column
-from sqlalchemy.sql import Select, Insert, Update, Delete
-from sqlalchemy.sql.expression import cast, delete, text, extract
-from sqlalchemy.sql.expression import insert, select, update
-from sqlalchemy.sql.sqltypes import Integer
+from sqlalchemy.sql import Select, Update, Delete, not_
+from sqlalchemy.sql.expression import delete
+from sqlalchemy.sql.expression import select, update
 
 from .models import *
 from .models.base import BaseModel
@@ -66,7 +63,7 @@ def select_player_profiles() -> Select:
 
 
 def select_player_profiles_whitelisted() -> Select:
-    return select(PlayerProfile).join(User).where(not PlayerProfile.banned)
+    return select(PlayerProfile).join(User).where(not_(PlayerProfile.banned))
 
 
 def select_player_profiles_by_did(did: int) -> Select:
@@ -74,7 +71,7 @@ def select_player_profiles_by_did(did: int) -> Select:
 
 
 def select_player_profiles_by_did_whitelisted(did: int) -> Select:
-    return select(PlayerProfile).join(User).where(User.did == did and not PlayerProfile.banned)
+    return select(PlayerProfile).join(User).where(User.did == did and not_(PlayerProfile.banned))
 
 
 def select_player_profile_by_ign(ign: str) -> Select:
