@@ -286,7 +286,7 @@ class WhitelistExtension(BotExtension):
 
     async def on_ready(self) -> None:
         self._dry_sync = False
-        self._dry_run = True
+        self._dry_run = False
 
     async def on_config_update(self) -> None:
         self.config = self.bot.get_config_section(WhitelistConfig)
