@@ -58,7 +58,7 @@ class PlayerProfileService(DBService):
         super().__init__(db)
         self.users = users
 
-    def get_sync_all(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
+    def get_all_sync(self, d_user: Union[discord.User, discord.Member, DB.User] = None) -> List[DB.PlayerProfile]:
         if d_user is None:
             return self.get_list_sync(q.select_player_profiles())
         if isinstance(d_user, DB.User):
@@ -72,7 +72,7 @@ class PlayerProfileService(DBService):
             return await self.get_list(q.select_player_profiles_by_did(d_user.did))
         return await self.get_list(q.select_player_profiles_by_did(d_user.id))
 
-    def get_whitelisted_all(self,
+    def get_whitelisted_sync(self,
                             d_user: Union[discord.User,
                                           discord.Member,
                                           DB.User] = None) -> List[DB.PlayerProfile]:
